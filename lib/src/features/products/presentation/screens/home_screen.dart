@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../backup/application/backup_providers.dart';
+import '../../../backup/domain/models/backup_outcome.dart';
 import '../../../cart/application/cart_controller.dart';
 import '../../../cart/presentation/screens/cart_screen.dart';
 import '../../application/products_providers.dart';
@@ -44,6 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final lowStockProducts =
         ref.watch(lowStockProductsProvider).valueOrNull ?? const <Product>[];
     final cartTotals = ref.watch(cartTotalsProvider);
+    final isBackupBusy = ref.watch(backupControllerProvider);
     final allProducts = productsState.valueOrNull ?? const <Product>[];
     final categories =
         allProducts.map((product) => product.category).toSet().toList()..sort();
@@ -57,11 +60,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             tooltip: 'إضافة منتج',
             icon: const Icon(Icons.add_box_outlined),
           ),
+          IconButton(
+            onPressed: isBackupBusy ? null : _backupData,
+            tooltip: 'الاحتفاظ بنسخة احتياطية',
+            icon: const Icon(Icons.backup_outlined),
+          ),
+          IconButton(
+            onPressed: isBackupBusy ? null : _restoreData,
+            tooltip: 'استعادة النسخة الاحتياطية',
+            icon: const Icon(Icons.settings_backup_restore_rounded),
+          ),
         ],
       ),
       drawer: _HomeDrawer(
         onAddProduct: () => _openAddProductDialog(categories),
         onSupportDeveloper: _supportDeveloper,
+        onBackupData: isBackupBusy ? null : _backupData,
+        onRestoreData: isBackupBusy ? null : _restoreData,
+        isBackupBusy: isBackupBusy,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
@@ -169,9 +185,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 product: product,
                                 onAdd: () => _addProduct(context, product),
                                 onUpdateStock: () =>
-                                    _openUpdateStockDialog(context, product),
-                                onDelete: () =>
-                                    _confirmDeleteProduct(context, product),
+                                    _openUpdateStockDialog(product),
+                                onDelete: () => _confirmDeleteProduct(product),
                               );
                             },
                             childCount: products.length,
@@ -237,10 +252,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Future<void> _openUpdateStockDialog(
-    BuildContext context,
-    Product product,
-  ) async {
+  Future<void> _openUpdateStockDialog(Product product) async {
     final updatedProduct = await showDialog<Product>(
       context: context,
       builder: (_) => Directionality(
@@ -255,40 +267,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     ref.read(cartControllerProvider.notifier).syncProduct(updatedProduct);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'تم تحديث مخزون "${updatedProduct.name}" إلى ${updatedProduct.stockQuantity}',
-        ),
-      ),
+    _showSnackBar(
+      'تم تحديث مخزون "${updatedProduct.name}" إلى ${updatedProduct.stockQuantity}',
     );
   }
 
-  Future<void> _confirmDeleteProduct(
-    BuildContext context,
-    Product product,
-  ) async {
+  Future<void> _confirmDeleteProduct(Product product) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('حذف المنتج'),
-        content: Text(
-          'هل تريد حذف "${product.name}" نهائيًا من قاعدة البيانات المحلية؟',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('إلغاء'),
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('حذف المنتج'),
+          content: Text(
+            'هل تريد حذف "${product.name}" نهائيًا من قاعدة البيانات المحلية؟',
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.danger,
-              foregroundColor: Colors.white,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('إلغاء'),
             ),
-            child: const Text('حذف'),
-          ),
-        ],
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.danger,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('حذف'),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -297,27 +305,92 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     try {
-      await ref.read(productsControllerProvider.notifier).deleteProduct(product);
+      await ref
+          .read(productsControllerProvider.notifier)
+          .deleteProduct(product);
       ref.read(cartControllerProvider.notifier).removeProduct(product);
 
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تم حذف المنتج "${product.name}"'),
-        ),
-      );
+      _showSnackBar('تم حذف المنتج "${product.name}"');
     } catch (error) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      _showSnackBar(error.toString());
     }
+  }
+
+  Future<void> _backupData() async {
+    try {
+      final result =
+          await ref.read(backupControllerProvider.notifier).createBackup();
+
+      if (!mounted || result.status == BackupStatus.cancelled) {
+        return;
+      }
+
+      _showSnackBar(
+        'تم حفظ نسخة احتياطية تضم ${result.productCount} منتجًا في:\n${result.location}',
+      );
+    } catch (error) {
+      if (mounted) {
+        _showSnackBar('تعذر إنشاء النسخة الاحتياطية: $error');
+      }
+    }
+  }
+
+  Future<void> _restoreData() async {
+    final shouldRestore = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('استعادة النسخة الاحتياطية'),
+          content: const Text(
+            'ستحل بيانات النسخة الاحتياطية محل جميع المنتجات الحالية. هل تريد المتابعة؟',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('استعادة'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (shouldRestore != true || !mounted) {
+      return;
+    }
+
+    try {
+      final result =
+          await ref.read(backupControllerProvider.notifier).restoreBackup();
+
+      if (!mounted || result.status == BackupStatus.cancelled) {
+        return;
+      }
+
+      _showSnackBar('تمت استعادة ${result.productCount} منتجًا بنجاح');
+    } catch (error) {
+      if (mounted) {
+        _showSnackBar('تعذرت استعادة النسخة الاحتياطية: $error');
+      }
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   void _showScanMessage(BuildContext context) {
@@ -640,10 +713,16 @@ class _HomeDrawer extends StatelessWidget {
   const _HomeDrawer({
     required this.onAddProduct,
     required this.onSupportDeveloper,
+    required this.onBackupData,
+    required this.onRestoreData,
+    required this.isBackupBusy,
   });
 
   final VoidCallback onAddProduct;
   final VoidCallback onSupportDeveloper;
+  final VoidCallback? onBackupData;
+  final VoidCallback? onRestoreData;
+  final bool isBackupBusy;
 
   @override
   Widget build(BuildContext context) {
@@ -688,6 +767,39 @@ class _HomeDrawer extends StatelessWidget {
                   onAddProduct();
                 },
               ),
+              const Divider(height: 24),
+              ListTile(
+                enabled: onBackupData != null,
+                leading: const Icon(Icons.backup_outlined),
+                title: const Text('الاحتفاظ بنسخة احتياطية'),
+                subtitle: const Text('تصدير المنتجات إلى ملف JSON'),
+                trailing: isBackupBusy
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : null,
+                onTap: onBackupData == null
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        onBackupData!();
+                      },
+              ),
+              ListTile(
+                enabled: onRestoreData != null,
+                leading: const Icon(Icons.settings_backup_restore_rounded),
+                title: const Text('استعادة النسخة الاحتياطية'),
+                subtitle: const Text('استيراد المنتجات من ملف محفوظ'),
+                onTap: onRestoreData == null
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        onRestoreData!();
+                      },
+              ),
+              const Divider(height: 24),
               ListTile(
                 leading: const Icon(Icons.favorite_border_rounded),
                 title: const Text('دعم المطور'),
