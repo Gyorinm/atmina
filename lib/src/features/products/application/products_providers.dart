@@ -91,7 +91,10 @@ class ProductsController extends AsyncNotifier<List<Product>> {
     final currentItems = state.valueOrNull ?? await build();
     state = AsyncData(
       currentItems
-          .where((item) => item.id != product.id || item.barcode != product.barcode)
+          .where(
+            (item) =>
+                !(item.barcode == product.barcode && item.id == product.id),
+          )
           .toList()
         ..sort((a, b) => a.name.compareTo(b.name)),
     );

@@ -153,6 +153,25 @@ class AppDatabase {
     );
   }
 
+  /// Replaces the whole catalogue with [products] inside a single transaction.
+  Future<void> replaceAllProducts(List<Product> products) async {
+    final db = await database;
+
+    await db.transaction((txn) async {
+      await txn.delete(productsTable);
+
+      final batch = txn.batch();
+      for (final product in products) {
+        batch.insert(
+          productsTable,
+          product.toMap()..remove('id'),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+      await batch.commit(noResult: true);
+    });
+  }
+
   Future<List<Product>> getAllProducts() async {
     final db = await database;
     final rows = await db.query(
