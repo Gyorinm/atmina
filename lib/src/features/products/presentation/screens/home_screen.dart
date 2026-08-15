@@ -237,11 +237,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(productsControllerProvider.notifier).deleteProduct(product);
       ref.read(cartControllerProvider.notifier).removeProduct(product);
     } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.toString())),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
     }
   }
 
