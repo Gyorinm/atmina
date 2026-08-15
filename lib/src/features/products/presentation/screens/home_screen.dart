@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../backup/presentation/backup_restore_screen.dart';
 import '../../../cart/application/cart_controller.dart';
 import '../../../cart/presentation/screens/cart_screen.dart';
+import '../../../orders/presentation/sales_history_screen.dart';
 import '../../application/products_providers.dart';
 import '../../domain/models/product.dart';
 import '../widgets/add_product_dialog.dart';
@@ -39,14 +41,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final productsState = ref.watch(productsControllerProvider);
     final productsAsync = ref.watch(filteredProductsProvider);
-    final outOfStockProducts =
-        ref.watch(outOfStockProductsProvider).valueOrNull ?? const <Product>[];
-    final lowStockProducts =
-        ref.watch(lowStockProductsProvider).valueOrNull ?? const <Product>[];
-    final cartTotals = ref.watch(cartTotalsProvider);
     final allProducts = productsState.valueOrNull ?? const <Product>[];
-    final categories =
-        allProducts.map((product) => product.category).toSet().toList()..sort();
+    final categories = allProducts.map((p) => p.category).toSet().toList()..sort();
+    final outOfStock = ref.watch(outOfStockProductsProvider).valueOrNull ?? const <Product>[];
+    final lowStock = ref.watch(lowStockProductsProvider).valueOrNull ?? const <Product>[];
+    final totals = ref.watch(cartTotalsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -61,66 +60,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       drawer: _HomeDrawer(
         onAddProduct: () => _openAddProductDialog(categories),
+        onSalesHistory: () => _openPage(const SalesHistoryScreen()),
+        onBackup: () => _openPage(const BackupRestoreScreen()),
         onSupportDeveloper: _supportDeveloper,
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => const Directionality(
-                textDirection: TextDirection.rtl,
-                child: CartScreen(),
-              ),
-            ),
-          );
-        },
+        onPressed: () => _openPage(const CartScreen()),
         backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.point_of_sale_rounded),
-        label: Text(
-          cartTotals.totalQuantity > 0
-              ? 'السلة (${cartTotals.totalQuantity})'
-              : 'السلة',
-        ),
+        label: Text(totals.totalQuantity > 0 ? 'السلة (${totals.totalQuantity})' : 'السلة'),
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          color: AppColors.navy,
-          onRefresh: () =>
-              ref.read(productsControllerProvider.notifier).refresh(),
+          onRefresh: () => ref.read(productsControllerProvider.notifier).refresh(),
           child: CustomScrollView(
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
+            physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _HeaderCard(cartTotals: cartTotals),
-                      const SizedBox(height: 18),
-                      if (outOfStockProducts.isNotEmpty ||
-                          lowStockProducts.isNotEmpty) ...[
-                        _InventoryAlertsCard(
-                          outOfStockProducts: outOfStockProducts,
-                          lowStockProducts: lowStockProducts,
-                        ),
-                        const SizedBox(height: 18),
+                      _HeaderCard(totalQuantity: totals.totalQuantity),
+                      if (outOfStock.isNotEmpty || lowStock.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _InventoryAlertCard(outOfStock: outOfStock, lowStock: lowStock),
                       ],
+                      const SizedBox(height: 16),
                       SearchInput(
                         controller: _searchController,
-                        onChanged: (value) {
-                          ref.read(productSearchQueryProvider.notifier).state =
-                              value;
-                        },
+                        onChanged: (value) => ref.read(productSearchQueryProvider.notifier).state = value,
                       ),
                       const SizedBox(height: 18),
-                      _SectionBar(
-                        onAddProduct: () => _openAddProductDialog(categories),
-                        onScanTap: () => _showScanMessage(context),
-                      ),
+                      Text('المنتجات', style: Theme.of(context).textTheme.titleLarge),
                     ],
                   ),
                 ),
@@ -129,37 +103,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 loading: () => SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                   sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (_, __) => const ProductCardSkeleton(),
-                      childCount: 6,
-                    ),
+                    delegate: SliverChildBuilderDelegate((_, __) => const ProductCardSkeleton(), childCount: 6),
                   ),
                 ),
                 error: (error, _) => SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        'تعذر تحميل المنتجات: $error',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
+                  child: Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('تعذر تحميل المنتجات: $error', textAlign: TextAlign.center))),
                 ),
                 data: (products) => SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                   sliver: products.isEmpty
                       ? SliverFillRemaining(
                           hasScrollBody: false,
-                          child: _EmptyState(
-                            onClearSearch: () {
-                              _searchController.clear();
-                              ref
-                                  .read(productSearchQueryProvider.notifier)
-                                  .state = '';
-                            },
-                          ),
+                          child: _EmptyState(onClearSearch: () {
+                            _searchController.clear();
+                            ref.read(productSearchQueryProvider.notifier).state = '';
+                          }),
                         )
                       : SliverList(
                           delegate: SliverChildBuilderDelegate(
@@ -168,10 +127,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               return ProductCard(
                                 product: product,
                                 onAdd: () => _addProduct(context, product),
-                                onUpdateStock: () =>
-                                    _openUpdateStockDialog(context, product),
-                                onDelete: () =>
-                                    _confirmDeleteProduct(context, product),
+                                onUpdateStock: () => _updateStock(context, product),
+                                onDelete: () => _deleteProduct(context, product),
                               );
                             },
                             childCount: products.length,
@@ -186,570 +143,158 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _addProduct(BuildContext context, Product product) {
-    if (product.stockQuantity <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('المنتج "${product.name}" غير متوفر في المخزون حاليًا'),
-        ),
-      );
-      return;
-    }
-
-    final added = ref.read(cartControllerProvider.notifier).addProduct(product);
-
-    if (!added) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'تم الوصول إلى الحد الأقصى من المخزون لمنتج "${product.name}"'),
-        ),
-      );
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('تمت إضافة "${product.name}" إلى السلة'),
-      ),
-    );
-  }
-
-  Future<void> _openAddProductDialog(
-    List<String> categories,
-  ) async {
+  Future<void> _openAddProductDialog(List<String> categories) async {
     final result = await showDialog<Product>(
       context: context,
-      builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AddProductDialog(existingCategories: categories),
-      ),
+      builder: (_) => Directionality(textDirection: TextDirection.rtl, child: AddProductDialog(existingCategories: categories)),
     );
-
-    if (!mounted || result == null) {
-      return;
+    if (mounted && result != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم حفظ المنتج "${result.name}"')));
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('تم حفظ المنتج "${result.name}" وتحديث القائمة'),
-      ),
-    );
   }
 
-  Future<void> _openUpdateStockDialog(
-    BuildContext context,
-    Product product,
-  ) async {
-    final updatedProduct = await showDialog<Product>(
+  void _openPage(Widget page) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => Directionality(textDirection: TextDirection.rtl, child: page)));
+  }
+
+  void _addProduct(BuildContext context, Product product) {
+    final added = ref.read(cartControllerProvider.notifier).addProduct(product);
+    if (!added && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('لا يمكن تجاوز المخزون المتاح لمنتج "${product.name}"')));
+    }
+  }
+
+  Future<void> _updateStock(BuildContext context, Product product) async {
+    final updated = await showDialog<Product>(
       context: context,
-      builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: UpdateStockDialog(product: product),
-      ),
+      builder: (_) => Directionality(textDirection: TextDirection.rtl, child: UpdateStockDialog(product: product)),
     );
-
-    if (!mounted || updatedProduct == null) {
-      return;
+    if (mounted && updated != null) {
+      ref.read(cartControllerProvider.notifier).syncProduct(updated);
     }
-
-    ref.read(cartControllerProvider.notifier).syncProduct(updatedProduct);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'تم تحديث مخزون "${updatedProduct.name}" إلى ${updatedProduct.stockQuantity}',
-        ),
-      ),
-    );
   }
 
-  Future<void> _confirmDeleteProduct(
-    BuildContext context,
-    Product product,
-  ) async {
-    final shouldDelete = await showDialog<bool>(
+  Future<void> _deleteProduct(BuildContext context, Product product) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('حذف المنتج'),
-        content: Text(
-          'هل تريد حذف "${product.name}" نهائيًا من قاعدة البيانات المحلية؟',
-        ),
+        content: Text('هل تريد حذف "${product.name}" نهائيًا؟'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.danger,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('حذف'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('حذف')),
         ],
       ),
     );
-
-    if (shouldDelete != true || !mounted) {
-      return;
-    }
-
+    if (confirmed != true || !mounted) return;
     try {
       await ref.read(productsControllerProvider.notifier).deleteProduct(product);
       ref.read(cartControllerProvider.notifier).removeProduct(product);
-
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تم حذف المنتج "${product.name}"'),
-        ),
-      );
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
     }
-  }
-
-  void _showScanMessage(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('زر المسح جاهز للربط مع كاميرا الباركود لاحقًا'),
-      ),
-    );
   }
 
   Future<void> _supportDeveloper() async {
-    final uri = Uri.parse(
-      'https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=brahim0619087436%40gmail.com&currency_code=MAD&item_name=Atmina%20POS%20Developer%20Support',
-    );
-
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تعذر فتح رابط دعم المطور على هذا الجهاز'),
-        ),
-      );
-    }
+    final uri = Uri.parse('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=brahim0619087436%40gmail.com&currency_code=MAD&item_name=Atmina%20POS%20Developer%20Support');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }
 
 class _HeaderCard extends StatelessWidget {
-  const _HeaderCard({required this.cartTotals});
-
-  final CartTotals cartTotals;
+  const _HeaderCard({required this.totalQuantity});
+  final int totalQuantity;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.navy, AppColors.navySoft],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 34,
-            offset: Offset(0, 18),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Atmina POS',
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'واجهة بيع سريعة ومصممة للمتاجر المحلية حتى في وضع عدم الاتصال.',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: Colors.white70,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _MetricTile(
-                  label: 'العناصر في السلة',
-                  value: '${cartTotals.totalQuantity}',
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: _MetricTile(
-                  label: 'وضع التشغيل',
-                  value: 'Offline',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  const _MetricTile({
-    required this.label,
-    required this.value,
-  });
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InventoryAlertsCard extends StatelessWidget {
-  const _InventoryAlertsCard({
-    required this.outOfStockProducts,
-    required this.lowStockProducts,
-  });
-
-  final List<Product> outOfStockProducts;
-  final List<Product> lowStockProducts;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.notifications_active_outlined,
-                color: AppColors.warning,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'تنبيهات المخزون',
-                  style: theme.textTheme.titleMedium,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'هذه المنتجات تحتاج متابعة قبل أن تؤثر على البيع.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.textMuted,
-            ),
-          ),
-          if (outOfStockProducts.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              'نفدت من المخزون',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: AppColors.danger,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...outOfStockProducts.map(
-              (product) => _InventoryAlertTile(
-                productName: product.name,
-                stockLabel: 'الكمية: 0',
-                accentColor: AppColors.danger,
-              ),
-            ),
-          ],
-          if (lowStockProducts.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              'قريبة من النفاد',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: AppColors.warning,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...lowStockProducts.map(
-              (product) => _InventoryAlertTile(
-                productName: product.name,
-                stockLabel: 'المتبقي: ${product.stockQuantity}',
-                accentColor: AppColors.warning,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _InventoryAlertTile extends StatelessWidget {
-  const _InventoryAlertTile({
-    required this.productName,
-    required this.stockLabel,
-    required this.accentColor,
-  });
-
-  final String productName;
-  final String stockLabel;
-  final Color accentColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(18),
+        color: AppColors.navy,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [BoxShadow(color: AppColors.shadow, blurRadius: 28, offset: Offset(0, 12))],
       ),
       child: Row(
         children: [
-          Icon(Icons.circle, size: 10, color: accentColor),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              productName,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            stockLabel,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: accentColor,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Atmina POS', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
+            const SizedBox(height: 8),
+            Text('إدارة المنتجات والمبيعات بدون اتصال.', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white70)),
+          ])),
+          const SizedBox(width: 16),
+          Column(children: [
+            Text('$totalQuantity', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+            const Text('في السلة', style: TextStyle(color: Colors.white70)),
+          ]),
         ],
       ),
     );
   }
 }
 
-class _SectionBar extends StatelessWidget {
-  const _SectionBar({
-    required this.onScanTap,
-    required this.onAddProduct,
-  });
-
-  final VoidCallback onScanTap;
-  final VoidCallback onAddProduct;
+class _InventoryAlertCard extends StatelessWidget {
+  const _InventoryAlertCard({required this.outOfStock, required this.lowStock});
+  final List<Product> outOfStock;
+  final List<Product> lowStock;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            'المنتجات',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
-        const SizedBox(width: 10),
-        FilledButton.icon(
-          onPressed: onAddProduct,
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.navy,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-          ),
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('منتج جديد'),
-        ),
-        OutlinedButton.icon(
-          onPressed: onScanTap,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.navy,
-            side: const BorderSide(color: AppColors.border),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-            ),
-          ),
-          icon: const Icon(Icons.qr_code_scanner_rounded),
-          label: const Text('مسح باركود'),
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.border)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('تنبيهات المخزون', style: Theme.of(context).textTheme.titleMedium),
+        if (outOfStock.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text('نفدت: ${outOfStock.map((p) => p.name).join('، ')}', style: const TextStyle(color: AppColors.danger)),
+        ],
+        if (lowStock.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text('قريبة من النفاد: ${lowStock.map((p) => p.name).join('، ')}', style: const TextStyle(color: AppColors.warning)),
+        ],
+      ]),
     );
   }
 }
 
 class _HomeDrawer extends StatelessWidget {
-  const _HomeDrawer({
-    required this.onAddProduct,
-    required this.onSupportDeveloper,
-  });
-
+  const _HomeDrawer({required this.onAddProduct, required this.onSalesHistory, required this.onBackup, required this.onSupportDeveloper});
   final VoidCallback onAddProduct;
+  final VoidCallback onSalesHistory;
+  final VoidCallback onBackup;
   final VoidCallback onSupportDeveloper;
 
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppColors.navy,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Atmina POS',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Colors.white,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'إدارة المبيعات والمخزون محليًا مع تجربة دفع سريعة.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.white70,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.add_box_outlined),
-                title: const Text('إضافة منتج جديد'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  onAddProduct();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.favorite_border_rounded),
-                title: const Text('دعم المطور'),
-                subtitle: const Text('Support App Developer'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  onSupportDeveloper();
-                },
-              ),
-            ],
-          ),
+      child: SafeArea(child: ListView(padding: const EdgeInsets.all(16), children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.circular(24)),
+          child: Text('Atmina POS', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
         ),
-      ),
+        const SizedBox(height: 16),
+        ListTile(leading: const Icon(Icons.add_box_outlined), title: const Text('إضافة منتج جديد'), onTap: () { Navigator.pop(context); onAddProduct(); }),
+        ListTile(leading: const Icon(Icons.receipt_long_outlined), title: const Text('سجل المبيعات'), onTap: () { Navigator.pop(context); onSalesHistory(); }),
+        ListTile(leading: const Icon(Icons.backup_outlined), title: const Text('النسخ الاحتياطي والاستعادة'), onTap: () { Navigator.pop(context); onBackup(); }),
+        ListTile(leading: const Icon(Icons.favorite_border_rounded), title: const Text('دعم المطور'), onTap: () { Navigator.pop(context); onSupportDeveloper(); }),
+      ]),
     );
   }
 }
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onClearSearch});
-
   final VoidCallback onClearSearch;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.inventory_2_outlined,
-              size: 48,
-              color: AppColors.textMuted,
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'لا توجد نتائج مطابقة',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'جرّب كتابة جزء من الاسم أو امسح الباركود.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textMuted,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: onClearSearch,
-              child: const Text('مسح البحث'),
-            ),
-          ],
-        ),
-      ),
-    );
+    return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+      const Icon(Icons.inventory_2_outlined, size: 48, color: AppColors.textMuted),
+      const SizedBox(height: 12),
+      Text('لا توجد نتائج', style: Theme.of(context).textTheme.titleLarge),
+      const SizedBox(height: 12),
+      FilledButton(onPressed: onClearSearch, child: const Text('مسح البحث')),
+    ])));
   }
 }
