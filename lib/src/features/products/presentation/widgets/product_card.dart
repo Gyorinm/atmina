@@ -98,29 +98,16 @@ class ProductCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _MetaChip(
-                  icon: Icons.qr_code_2_rounded,
-                  label: product.barcode,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _MetaChip(
-                  icon: product.stockQuantity > 0
-                      ? Icons.inventory_2_outlined
-                      : Icons.warning_amber_rounded,
-                  label: product.stockQuantity > 0
-                      ? 'المخزون: ${product.stockQuantity}'
-                      : 'نفد المخزون',
-                  accentColor: product.stockQuantity > 0
-                      ? AppColors.success
-                      : AppColors.danger,
-                ),
-              ),
-            ],
+          _MetaChip(
+            icon: product.stockQuantity > 0
+                ? Icons.inventory_2_outlined
+                : Icons.warning_amber_rounded,
+            label: product.stockQuantity > 0
+                ? 'المخزون: ${product.stockQuantity}'
+                : 'نفد المخزون',
+            accentColor: product.stockQuantity > 0
+                ? AppColors.success
+                : AppColors.danger,
           ),
           const SizedBox(height: 16),
           Row(
