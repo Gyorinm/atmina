@@ -18,7 +18,6 @@ class AddProductDialog extends ConsumerStatefulWidget {
 class _AddProductDialogState extends ConsumerState<AddProductDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
-  late final TextEditingController _barcodeController;
   late final TextEditingController _categoryController;
   late final TextEditingController _priceController;
   late final TextEditingController _stockController;
@@ -28,7 +27,6 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
   void initState() {
     super.initState();
     _nameController = TextEditingController();
-    _barcodeController = TextEditingController();
     _categoryController = TextEditingController();
     _priceController = TextEditingController();
     _stockController = TextEditingController(text: '1');
@@ -37,7 +35,6 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
   @override
   void dispose() {
     _nameController.dispose();
-    _barcodeController.dispose();
     _categoryController.dispose();
     _priceController.dispose();
     _stockController.dispose();
@@ -60,13 +57,6 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
               children: [
                 _field(_nameController, 'اسم المنتج', TextInputAction.next,
                     (v) => v == null || v.trim().isEmpty ? 'يرجى إدخال اسم المنتج.' : null),
-                const SizedBox(height: 12),
-                _field(_barcodeController, 'الباركود', TextInputAction.next, (v) {
-                  if (v == null || v.trim().isEmpty) return 'يرجى إدخال الباركود.';
-                  if (v.trim().length < 4) return 'الباركود قصير جدًا.';
-                  return null;
-                }, keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly]),
                 const SizedBox(height: 12),
                 _field(_categoryController, 'التصنيف', TextInputAction.next,
                     (v) => v == null || v.trim().isEmpty ? 'يرجى إدخال التصنيف.' : null),
@@ -138,7 +128,6 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
       final product = await ref.read(productsControllerProvider.notifier).addProduct(
         CreateProductInput(
           name: _nameController.text.trim(),
-          barcode: _barcodeController.text.trim(),
           category: _categoryController.text.trim(),
           price: _parseDouble(_priceController.text.trim())!,
           stockQuantity: int.parse(_stockController.text.trim()),
