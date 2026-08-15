@@ -259,9 +259,15 @@ class AppDatabase {
       await txn.delete(ordersTable);
       await txn.delete(productsTable);
       final batch = txn.batch();
-      for (final row in products) batch.insert(productsTable, row);
-      for (final row in orders) batch.insert(ordersTable, row);
-      for (final row in items) batch.insert(orderItemsTable, row);
+      for (final row in products) {
+        batch.insert(productsTable, row);
+      }
+      for (final row in orders) {
+        batch.insert(ordersTable, row);
+      }
+      for (final row in items) {
+        batch.insert(orderItemsTable, row);
+      }
       await batch.commit(noResult: true);
     });
   }
@@ -278,7 +284,11 @@ class AppDatabase {
     final normalizedCategory = normalizeValue(category);
     final parts = {...normalizedName.split(' '), ...normalizedCategory.split(' ')};
     final prefixes = <String>{normalizedName, normalizedCategory, normalizeValue(barcode), ...parts};
-    for (final part in parts) for (var i = 1; i <= part.length; i++) prefixes.add(part.substring(0, i));
+    for (final part in parts) {
+      for (var i = 1; i <= part.length; i++) {
+        prefixes.add(part.substring(0, i));
+      }
+    }
     return prefixes.join(' ');
   }
 
