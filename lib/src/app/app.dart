@@ -13,6 +13,8 @@ import '../features/onboarding/presentation/role_selection_screen.dart';
 import '../features/orders/domain/order_payload.dart';
 import '../features/orders/presentation/order_link_screen.dart';
 import '../features/products/presentation/screens/home_screen.dart';
+import '../features/store/domain/store_payload.dart';
+import '../features/store/presentation/screens/customer_catalog_screen.dart';
 
 class AtminaApp extends StatefulWidget {
   const AtminaApp({super.key});
@@ -50,22 +52,30 @@ class _AtminaAppState extends State<AtminaApp> {
   }
 
   void _openLink(Uri uri) {
-    if (uri.scheme != 'atmina' || uri.host != 'order' || uri.pathSegments.isEmpty) return;
+    if (uri.scheme != 'atmina' || uri.pathSegments.isEmpty) return;
+    if (uri.host != 'order' && uri.host != 'store') return;
     if (_navigatorKey.currentState == null) {
       _pendingUri = uri;
       return;
     }
-    _navigateToOrder(uri);
+    _navigateToLink(uri);
   }
 
-  void _navigateToOrder(Uri uri) {
+  void _navigateToLink(Uri uri) {
     try {
-      final payload = OrderPayload.decode(uri.pathSegments.first);
-      _navigatorKey.currentState!.push(
-        MaterialPageRoute<void>(builder: (_) => OrderLinkScreen(payload: payload)),
-      );
+      if (uri.host == 'order') {
+        final payload = OrderPayload.decode(uri.pathSegments.first);
+        _navigatorKey.currentState!.push(
+          MaterialPageRoute<void>(builder: (_) => OrderLinkScreen(payload: payload)),
+        );
+      } else if (uri.host == 'store') {
+        final payload = StorePayload.decode(uri.pathSegments.first);
+        _navigatorKey.currentState!.push(
+          MaterialPageRoute<void>(builder: (_) => CustomerCatalogScreen(payload: payload)),
+        );
+      }
     } catch (_) {
-      // Ignore malformed order links.
+      // Ignore malformed links.
     }
   }
 
@@ -73,7 +83,7 @@ class _AtminaAppState extends State<AtminaApp> {
     final uri = _pendingUri;
     if (uri == null || _navigatorKey.currentState == null) return;
     _pendingUri = null;
-    _navigateToOrder(uri);
+    _navigateToLink(uri);
   }
 
   @override
