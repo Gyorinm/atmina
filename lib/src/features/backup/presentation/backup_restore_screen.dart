@@ -3,17 +3,21 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../cart/application/cart_controller.dart';
+import '../../products/application/products_providers.dart';
 import '../../products/data/datasources/app_database.dart';
 
-class BackupRestoreScreen extends StatefulWidget {
+class BackupRestoreScreen extends ConsumerStatefulWidget {
   const BackupRestoreScreen({super.key});
 
   @override
-  State<BackupRestoreScreen> createState() => _BackupRestoreScreenState();
+  ConsumerState<BackupRestoreScreen> createState() =>
+      _BackupRestoreScreenState();
 }
 
-class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
+class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
   bool busy = false;
 
   Future<void> _backup() async {
@@ -91,9 +95,14 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
       if (confirmed != true) return;
       await AppDatabase.instance.restoreBackup(backup);
 
+      ref.read(cartControllerProvider.notifier).clear();
+      await ref.read(productsControllerProvider.notifier).refresh();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تمت استعادة البيانات.')),
+          const SnackBar(
+            content: Text('تمت استعادة البيانات وتحديث المنتجات والسلة.'),
+          ),
         );
       }
     } catch (error) {
