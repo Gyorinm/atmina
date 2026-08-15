@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/extensions/currency_formatting.dart';
@@ -30,12 +31,24 @@ class CartScreen extends ConsumerWidget {
                 onDecrement: () => ref.read(cartControllerProvider.notifier).decrement(key),
                 onRemove: () => ref.read(cartControllerProvider.notifier).remove(key));
             })),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () async {
+                try {
+                  final payload = OrderService(AppDatabase.instance).buildPayload(items.map((e) => (product: e.product, quantity: e.quantity)).toList());
+                  final uri = Uri(scheme: 'atmina', host: 'order', path: '/${payload.encode()}');
+                  await SharePlus.instance.share(ShareParams(text: 'طلبية Atmina #${payload.code}\nافتح هذا الرابط داخل تطبيق Atmina لإضافة الطلب:\n$uri', title: 'مشاركة الطلبية'));
+                } catch (error) {
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر مشاركة الطلبية: $error')));
+                }
+              },
+              icon: const Icon(Icons.share_outlined),
+              label: const Text('نسخ ومشاركة رابط الطلبية'),
+            ),
+            const SizedBox(height: 10),
             CartSummaryCard(totals: totals, onCheckout: (finalAmount) async {
               try {
-                await OrderService(AppDatabase.instance).saveSale(
-                  items: items.map((e) => (product: e.product, quantity: e.quantity)).toList(),
-                  subtotal: totals.subtotal, discount: totals.subtotal - finalAmount, total: finalAmount, received: finalAmount);
+                await OrderService(AppDatabase.instance).saveSale(items: items.map((e) => (product: e.product, quantity: e.quantity)).toList(), subtotal: totals.subtotal, discount: totals.subtotal - finalAmount, total: finalAmount, received: finalAmount);
                 ref.read(cartControllerProvider.notifier).clear();
                 await ref.read(productsControllerProvider.notifier).refresh();
                 if (!context.mounted) return;
