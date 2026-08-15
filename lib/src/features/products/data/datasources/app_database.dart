@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -30,6 +28,9 @@ class AppDatabase {
     _database = await openDatabase(
       path,
       version: _databaseVersion,
+      onConfigure: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -118,11 +119,10 @@ class AppDatabase {
   Future<Product> updateProduct(Product product) async {
     final db = await database;
     final values = product.toMap()..remove('id');
-    if (product.id != null) {
-      await db.update(productsTable, values, where: 'id = ?', whereArgs: [product.id], conflictAlgorithm: ConflictAlgorithm.abort);
-    } else {
-      await db.update(productsTable, values, where: 'barcode = ?', whereArgs: [product.barcode], conflictAlgorithm: ConflictAlgorithm.abort);
-    }
+    final updated = product.id != null
+        ? await db.update(productsTable, values, where: 'id = ?', whereArgs: [product.id], conflictAlgorithm: ConflictAlgorithm.abort)
+        : await db.update(productsTable, values, where: 'barcode = ?', whereArgs: [product.barcode], conflictAlgorithm: ConflictAlgorithm.abort);
+    if (updated == 0) throw StateError('المنتج غير موجود.');
     return product;
   }
 
@@ -143,14 +143,25 @@ class AppDatabase {
     return rows.isEmpty ? null : Product.fromMap(rows.first);
   }
 
-  Future<List<Map<String, dynamic>>> getOrders() async {
+  Future<List<Map<String, dynamic>>> getOrders({String? source}) async {
     final db = await database;
-    return db.query(ordersTable, orderBy: 'created_at DESC');
+    return db.query(
+      ordersTable,
+      where: source == null ? null : 'source = ?',
+      whereArgs: source == null ? null : [source],
+      orderBy: 'created_at DESC',
+    );
   }
 
   Future<List<Map<String, dynamic>>> getOrderItems(int orderId) async {
     final db = await database;
     return db.query(orderItemsTable, where: 'order_id = ?', whereArgs: [orderId], orderBy: 'id ASC');
+  }
+
+  Future<void> markOrderCollected(int orderId, int collectedQuantity) async {
+    final db = await database;
+    await db.update(ordersTable, {'status': 'completed', 'updated_at': DateTime.now().toIso8601String()}, where: 'id = ?', whereArgs: [orderId]);
+    await db.update(orderItemsTable, {'collected_quantity': collectedQuantity.clamp(0, 1 << 30)}, where: 'order_id = ?', whereArgs: [orderId]);
   }
 
   Future<int> createOrder({
@@ -167,17 +178,21 @@ class AppDatabase {
   }) async {
     final db = await database;
     return db.transaction<int>((txn) async {
+      if (items.isEmpty) throw StateError('لا يمكن إنشاء طلب بدون منتجات.');
+
       if (deductStock) {
         for (final item in items) {
           final barcode = item['product_barcode'] as String;
           final quantity = item['quantity'] as int;
+          if (quantity <= 0) throw StateError('كمية غير صالحة للمنتج $barcode.');
           final rows = await txn.query(productsTable, columns: ['id','stock_quantity'], where: 'barcode = ?', whereArgs: [barcode], limit: 1);
           if (rows.isEmpty) throw StateError('المنتج $barcode غير موجود.');
-          final stock = rows.first['stock_quantity'] as int;
+          final stock = (rows.first['stock_quantity'] as num).toInt();
           if (stock < quantity) throw StateError('المخزون غير كافٍ للمنتج $barcode.');
           await txn.update(productsTable, {'stock_quantity': stock - quantity, 'updated_at': DateTime.now().toIso8601String()}, where: 'id = ?', whereArgs: [rows.first['id']]);
         }
       }
+
       final now = DateTime.now().toIso8601String();
       final orderId = await txn.insert(ordersTable, {
         'order_code': orderCode,
@@ -191,15 +206,18 @@ class AppDatabase {
         'created_at': now,
         'updated_at': now,
       }, conflictAlgorithm: ConflictAlgorithm.abort);
+
       final batch = txn.batch();
       for (final item in items) {
+        final quantity = (item['quantity'] as num).toInt();
+        final collected = (item['collected_quantity'] as num?)?.toInt() ?? 0;
         batch.insert(orderItemsTable, {
           'order_id': orderId,
           'product_barcode': item['product_barcode'],
           'product_name': item['product_name'],
           'unit_price': item['unit_price'],
-          'quantity': item['quantity'],
-          'collected_quantity': item['collected_quantity'] ?? 0,
+          'quantity': quantity,
+          'collected_quantity': collected.clamp(0, quantity),
         });
       }
       await batch.commit(noResult: true);
@@ -223,18 +241,27 @@ class AppDatabase {
     if (backup['format'] != 'atmina-backup' || backup['version'] is! int) {
       throw const FormatException('ملف النسخة الاحتياطية غير صالح.');
     }
-    final products = List<Map<String, dynamic>>.from(backup['products'] ?? const []);
-    final orders = List<Map<String, dynamic>>.from(backup['orders'] ?? const []);
-    final items = List<Map<String, dynamic>>.from(backup['order_items'] ?? const []);
+
+    final rawProducts = backup['products'];
+    final rawOrders = backup['orders'];
+    final rawItems = backup['order_items'];
+    if (rawProducts is! List || rawOrders is! List || rawItems is! List) {
+      throw const FormatException('بيانات النسخة الاحتياطية ناقصة أو غير صالحة.');
+    }
+
+    final products = rawProducts.map((e) => Map<String, dynamic>.from(e as Map)).toList(growable: false);
+    final orders = rawOrders.map((e) => Map<String, dynamic>.from(e as Map)).toList(growable: false);
+    final items = rawItems.map((e) => Map<String, dynamic>.from(e as Map)).toList(growable: false);
+
     final db = await database;
     await db.transaction((txn) async {
       await txn.delete(orderItemsTable);
       await txn.delete(ordersTable);
       await txn.delete(productsTable);
       final batch = txn.batch();
-      for (final row in products) batch.insert(productsTable, Map<String, dynamic>.from(row));
-      for (final row in orders) batch.insert(ordersTable, Map<String, dynamic>.from(row));
-      for (final row in items) batch.insert(orderItemsTable, Map<String, dynamic>.from(row));
+      for (final row in products) batch.insert(productsTable, row);
+      for (final row in orders) batch.insert(ordersTable, row);
+      for (final row in items) batch.insert(orderItemsTable, row);
       await batch.commit(noResult: true);
     });
   }
@@ -263,6 +290,3 @@ class AppDatabase {
     return result.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 }
-
-String encodeBackup(Map<String, dynamic> data) => jsonEncode(data);
-Map<String, dynamic> decodeBackup(String value) => Map<String, dynamic>.from(jsonDecode(value) as Map);
