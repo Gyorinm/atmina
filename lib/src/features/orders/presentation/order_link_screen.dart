@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/extensions/currency_formatting.dart';
 import '../../cart/application/cart_controller.dart';
 import '../../products/data/datasources/app_database.dart';
+import '../../products/domain/models/product.dart';
 import '../application/order_service.dart';
 import '../domain/order_payload.dart';
 class OrderLinkScreen extends ConsumerStatefulWidget { const OrderLinkScreen({super.key, required this.payload}); final OrderPayload payload; @override ConsumerState<OrderLinkScreen> createState() => _OrderLinkScreenState(); }
@@ -12,7 +13,7 @@ class _OrderLinkScreenState extends ConsumerState<OrderLinkScreen> {
   Future<void> _accept() async {
     setState(() => saving = true);
     try {
-      final products = <({dynamic product, int quantity})>[];
+      final products = <({Product product, int quantity})>[];
       for (final item in widget.payload.items) {
         final product = await AppDatabase.instance.findProductByBarcode(item.barcode);
         if (product == null) throw StateError('المنتج ${item.name} غير موجود في مخزون التاجر.');
@@ -20,9 +21,7 @@ class _OrderLinkScreenState extends ConsumerState<OrderLinkScreen> {
         products.add((product: product, quantity: item.quantity));
       }
       await OrderService(AppDatabase.instance).importOrder(widget.payload);
-      for (final entry in products) {
-        for (var n = 0; n < entry.quantity; n++) { ref.read(cartControllerProvider.notifier).addProduct(entry.product); }
-      }
+      for (final entry in products) for (var n = 0; n < entry.quantity; n++) ref.read(cartControllerProvider.notifier).addProduct(entry.product);
       if (mounted) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تمت إضافة الطلب إلى السلة وحفظه محلياً.'))); Navigator.of(context).pop(); }
     } catch (error) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر استلام الطلب: $error'))); }
     finally { if (mounted) setState(() => saving = false); }
