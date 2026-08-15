@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:sqflite/sqflite.dart';
 
 import '../../domain/models/create_product_input.dart';
@@ -15,17 +17,18 @@ class ProductsRepository {
 
   Future<Product> addProduct(CreateProductInput input) async {
     final now = DateTime.now();
+    final internalCode = _generateInternalCode();
     final product = Product(
       name: input.name.trim(),
       price: input.price,
-      barcode: input.barcode.trim(),
+      barcode: internalCode,
       category: input.category.trim(),
       stockQuantity: input.stockQuantity,
       searchTerms: AppDatabase.buildSearchTerms(
         Product(
           name: input.name.trim(),
           price: input.price,
-          barcode: input.barcode.trim(),
+          barcode: internalCode,
           category: input.category.trim(),
           stockQuantity: input.stockQuantity,
           searchTerms: '',
@@ -41,7 +44,7 @@ class ProductsRepository {
       return await _database.insertProduct(product);
     } on DatabaseException catch (error) {
       if (error.isUniqueConstraintError()) {
-        throw const ProductSaveException('الباركود مستخدم بالفعل لمنتج آخر.');
+        return addProduct(input);
       }
       throw const ProductSaveException('تعذر حفظ المنتج محليًا.');
     }
@@ -79,13 +82,10 @@ class ProductsRepository {
     for (final product in products) {
       final normalizedName = _normalize(product.name);
       final normalizedCategory = _normalize(product.category);
-      final normalizedBarcode = _normalize(product.barcode);
 
       var score = 0;
 
-      if (normalizedBarcode == normalizedQuery) {
-        score = 1100;
-      } else if (normalizedName.startsWith(normalizedQuery)) {
+      if (normalizedName.startsWith(normalizedQuery)) {
         score = 900;
       } else if (normalizedCategory.startsWith(normalizedQuery)) {
         score = 750;
@@ -128,6 +128,14 @@ class ProductsRepository {
       }
     }
     return qIndex == query.length;
+  }
+
+  static final Random _random = Random.secure();
+
+  static String _generateInternalCode() {
+    final timestamp = DateTime.now().microsecondsSinceEpoch;
+    final salt = _random.nextInt(900000) + 100000;
+    return 'sku-$timestamp-$salt';
   }
 }
 
