@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../onboarding/application/app_role_controller.dart';
+import '../../../store/presentation/screens/customer_store_access_screen.dart';
 
 class CustomerHomeScreen extends ConsumerWidget {
   const CustomerHomeScreen({super.key});
@@ -30,12 +31,20 @@ class CustomerHomeScreen extends ConsumerWidget {
               children: [
                 const Icon(Icons.storefront_outlined, size: 56, color: AppColors.navy),
                 const SizedBox(height: 16),
-                Text('تصفح المتجر قريبًا', style: theme.textTheme.titleLarge),
+                Text('تسوّق من متجرك المفضل', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 8),
                 Text(
-                  'قريبًا هنا: إدخال كود المتجر أو مسح الباركود لتصفح منتجات التاجر وإرسال طلبية مباشرة عبر واتساب.',
+                  'الصق الرابط الذي أرسله لك التاجر عبر واتساب لتصفح منتجاته وإرسال طلبية مباشرة.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const CustomerStoreAccessScreen()),
+                  ),
+                  icon: const Icon(Icons.link_rounded),
+                  label: const Text('إدخال رابط المتجر'),
                 ),
               ],
             ),
