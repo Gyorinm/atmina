@@ -52,13 +52,6 @@ class CartItemTile extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            item.product.barcode,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: AppColors.textMuted,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
             'المتوفر في المخزون: ${item.product.stockQuantity}',
             style: theme.textTheme.bodySmall?.copyWith(
               color: AppColors.textMuted,
