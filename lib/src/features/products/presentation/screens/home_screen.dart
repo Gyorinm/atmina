@@ -6,6 +6,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../backup/presentation/backup_restore_screen.dart';
 import '../../../cart/application/cart_controller.dart';
 import '../../../cart/presentation/screens/cart_screen.dart';
+import '../../../onboarding/application/app_role_controller.dart';
 import '../../../orders/presentation/sales_history_screen.dart';
 import '../../application/products_providers.dart';
 import '../../domain/models/product.dart';
@@ -63,6 +64,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onSalesHistory: () => _openPage(const SalesHistoryScreen()),
         onBackup: () => _openPage(const BackupRestoreScreen()),
         onSupportDeveloper: _supportDeveloper,
+        onSwitchRole: () => ref.read(appRoleControllerProvider.notifier).clearRole(),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openPage(const CartScreen()),
@@ -358,12 +360,14 @@ class _HomeDrawer extends StatelessWidget {
     required this.onSalesHistory,
     required this.onBackup,
     required this.onSupportDeveloper,
+    required this.onSwitchRole,
   });
 
   final VoidCallback onAddProduct;
   final VoidCallback onSalesHistory;
   final VoidCallback onBackup;
   final VoidCallback onSupportDeveloper;
+  final VoidCallback onSwitchRole;
 
   @override
   Widget build(BuildContext context) {
@@ -416,6 +420,15 @@ class _HomeDrawer extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 onSupportDeveloper();
+              },
+            ),
+            const Divider(height: 24),
+            ListTile(
+              leading: const Icon(Icons.swap_horiz_rounded),
+              title: const Text('تبديل نوع الحساب'),
+              onTap: () {
+                Navigator.pop(context);
+                onSwitchRole();
               },
             ),
           ],
