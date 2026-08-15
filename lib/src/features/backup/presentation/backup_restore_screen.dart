@@ -53,14 +53,13 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
   Future<void> _restore() async {
     setState(() => busy = true);
     try {
-      final files = await FilePicker.pickFiles(
-        allowMultiple: false,
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
-      if (files.isEmpty) return;
+      if (file == null) return;
 
-      final bytes = await files.single.readAsBytes();
+      final bytes = await file.readAsBytes();
       final decoded = jsonDecode(utf8.decode(bytes));
       if (decoded is! Map) {
         throw const FormatException('ملف النسخة الاحتياطية غير صالح.');
