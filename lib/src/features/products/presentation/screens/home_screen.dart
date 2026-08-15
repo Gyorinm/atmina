@@ -40,12 +40,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final productsState = ref.watch(productsControllerProvider);
-    final productsAsync = ref.watch(filteredProductsProvider);
+    final filteredProducts = ref.watch(filteredProductsProvider);
     final allProducts = productsState.valueOrNull ?? const <Product>[];
     final categories = allProducts.map((p) => p.category).toSet().toList()..sort();
     final outOfStock = ref.watch(outOfStockProductsProvider).valueOrNull ?? const <Product>[];
     final lowStock = ref.watch(lowStockProductsProvider).valueOrNull ?? const <Product>[];
-    final totals = ref.watch(cartTotalsProvider);
+    final cartTotals = ref.watch(cartTotalsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -69,7 +69,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.point_of_sale_rounded),
-        label: Text(totals.totalQuantity > 0 ? 'السلة (${totals.totalQuantity})' : 'السلة'),
+        label: Text(
+          cartTotals.totalQuantity > 0
+              ? 'السلة (${cartTotals.totalQuantity})'
+              : 'السلة',
+        ),
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -83,42 +87,63 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _HeaderCard(totalQuantity: totals.totalQuantity),
+                      _HeaderCard(totalQuantity: cartTotals.totalQuantity),
                       if (outOfStock.isNotEmpty || lowStock.isNotEmpty) ...[
                         const SizedBox(height: 16),
-                        _InventoryAlertCard(outOfStock: outOfStock, lowStock: lowStock),
+                        _InventoryAlertCard(
+                          outOfStock: outOfStock,
+                          lowStock: lowStock,
+                        ),
                       ],
                       const SizedBox(height: 16),
                       SearchInput(
                         controller: _searchController,
-                        onChanged: (value) => ref.read(productSearchQueryProvider.notifier).state = value,
+                        onChanged: (value) {
+                          ref.read(productSearchQueryProvider.notifier).state = value;
+                        },
                       ),
                       const SizedBox(height: 18),
-                      Text('المنتجات', style: Theme.of(context).textTheme.titleLarge),
+                      Text(
+                        'المنتجات',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
                     ],
                   ),
                 ),
               ),
-              productsAsync.when(
+              filteredProducts.when(
                 loading: () => SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                   sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate((_, __) => const ProductCardSkeleton(), childCount: 6),
+                    delegate: SliverChildBuilderDelegate(
+                      (_, __) => const ProductCardSkeleton(),
+                      childCount: 6,
+                    ),
                   ),
                 ),
                 error: (error, _) => SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('تعذر تحميل المنتجات: $error', textAlign: TextAlign.center))),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'تعذر تحميل المنتجات: $error',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
                 ),
                 data: (products) => SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                   sliver: products.isEmpty
                       ? SliverFillRemaining(
                           hasScrollBody: false,
-                          child: _EmptyState(onClearSearch: () {
-                            _searchController.clear();
-                            ref.read(productSearchQueryProvider.notifier).state = '';
-                          }),
+                          child: _EmptyState(
+                            onClearSearch: () {
+                              _searchController.clear();
+                              ref.read(productSearchQueryProvider.notifier).state = '';
+                            },
+                          ),
                         )
                       : SliverList(
                           delegate: SliverChildBuilderDelegate(
@@ -146,32 +171,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Future<void> _openAddProductDialog(List<String> categories) async {
     final result = await showDialog<Product>(
       context: context,
-      builder: (_) => Directionality(textDirection: TextDirection.rtl, child: AddProductDialog(existingCategories: categories)),
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AddProductDialog(existingCategories: categories),
+      ),
     );
-    if (mounted && result != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم حفظ المنتج "${result.name}"')));
-    }
+    if (!mounted || result == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('تم حفظ المنتج "${result.name}"')),
+    );
   }
 
   void _openPage(Widget page) {
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => Directionality(textDirection: TextDirection.rtl, child: page)));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: page,
+        ),
+      ),
+    );
   }
 
   void _addProduct(BuildContext context, Product product) {
     final added = ref.read(cartControllerProvider.notifier).addProduct(product);
     if (!added && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('لا يمكن تجاوز المخزون المتاح لمنتج "${product.name}"')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('لا يمكن تجاوز المخزون المتاح لمنتج "${product.name}"')),
+      );
     }
   }
 
   Future<void> _updateStock(BuildContext context, Product product) async {
     final updated = await showDialog<Product>(
       context: context,
-      builder: (_) => Directionality(textDirection: TextDirection.rtl, child: UpdateStockDialog(product: product)),
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: UpdateStockDialog(product: product),
+      ),
     );
-    if (mounted && updated != null) {
-      ref.read(cartControllerProvider.notifier).syncProduct(updated);
-    }
+    if (!mounted || updated == null) return;
+    ref.read(cartControllerProvider.notifier).syncProduct(updated);
   }
 
   Future<void> _deleteProduct(BuildContext context, Product product) async {
@@ -181,8 +221,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: const Text('حذف المنتج'),
         content: Text('هل تريد حذف "${product.name}" نهائيًا؟'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('إلغاء')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('حذف')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('حذف'),
+          ),
         ],
       ),
     );
@@ -191,18 +237,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       await ref.read(productsControllerProvider.notifier).deleteProduct(product);
       ref.read(cartControllerProvider.notifier).removeProduct(product);
     } catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
     }
   }
 
   Future<void> _supportDeveloper() async {
-    final uri = Uri.parse('https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=brahim0619087436%40gmail.com&currency_code=MAD&item_name=Atmina%20POS%20Developer%20Support');
+    final uri = Uri.parse(
+      'https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=brahim0619087436%40gmail.com&currency_code=MAD&item_name=Atmina%20POS%20Developer%20Support',
+    );
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }
 
 class _HeaderCard extends StatelessWidget {
   const _HeaderCard({required this.totalQuantity});
+
   final int totalQuantity;
 
   @override
@@ -212,20 +265,49 @@ class _HeaderCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.navy,
         borderRadius: BorderRadius.circular(28),
-        boxShadow: const [BoxShadow(color: AppColors.shadow, blurRadius: 28, offset: Offset(0, 12))],
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 28,
+            offset: Offset(0, 12),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Atmina POS', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
-            const SizedBox(height: 8),
-            Text('إدارة المنتجات والمبيعات بدون اتصال.', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white70)),
-          ])),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Atmina POS',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'إدارة المنتجات والمبيعات بدون اتصال.',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.white70,
+                      ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(width: 16),
-          Column(children: [
-            Text('$totalQuantity', style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
-            const Text('في السلة', style: TextStyle(color: Colors.white70)),
-          ]),
+          Column(
+            children: [
+              Text(
+                '$totalQuantity',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const Text('في السلة', style: TextStyle(color: Colors.white70)),
+            ],
+          ),
         ],
       ),
     );
@@ -234,6 +316,7 @@ class _HeaderCard extends StatelessWidget {
 
 class _InventoryAlertCard extends StatelessWidget {
   const _InventoryAlertCard({required this.outOfStock, required this.lowStock});
+
   final List<Product> outOfStock;
   final List<Product> lowStock;
 
@@ -241,24 +324,43 @@ class _InventoryAlertCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: AppColors.border)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('تنبيهات المخزون', style: Theme.of(context).textTheme.titleMedium),
-        if (outOfStock.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Text('نفدت: ${outOfStock.map((p) => p.name).join('، ')}', style: const TextStyle(color: AppColors.danger)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('تنبيهات المخزون', style: Theme.of(context).textTheme.titleMedium),
+          if (outOfStock.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              'نفدت: ${outOfStock.map((p) => p.name).join('، ')}',
+              style: const TextStyle(color: AppColors.danger),
+            ),
+          ],
+          if (lowStock.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'قريبة من النفاد: ${lowStock.map((p) => p.name).join('، ')}',
+              style: const TextStyle(color: AppColors.warning),
+            ),
+          ],
         ],
-        if (lowStock.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text('قريبة من النفاد: ${lowStock.map((p) => p.name).join('، ')}', style: const TextStyle(color: AppColors.warning)),
-        ],
-      ]),
+      ),
     );
   }
 }
 
 class _HomeDrawer extends StatelessWidget {
-  const _HomeDrawer({required this.onAddProduct, required this.onSalesHistory, required this.onBackup, required this.onSupportDeveloper});
+  const _HomeDrawer({
+    required this.onAddProduct,
+    required this.onSalesHistory,
+    required this.onBackup,
+    required this.onSupportDeveloper,
+  });
+
   final VoidCallback onAddProduct;
   final VoidCallback onSalesHistory;
   final VoidCallback onBackup;
@@ -267,34 +369,94 @@ class _HomeDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      child: SafeArea(child: ListView(padding: const EdgeInsets.all(16), children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: AppColors.navy, borderRadius: BorderRadius.circular(24)),
-          child: Text('Atmina POS', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white)),
+      child: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.navy,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Text(
+                'Atmina POS',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                    ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.add_box_outlined),
+              title: const Text('إضافة منتج جديد'),
+              onTap: () {
+                Navigator.pop(context);
+                onAddProduct();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('سجل المبيعات'),
+              onTap: () {
+                Navigator.pop(context);
+                onSalesHistory();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.backup_outlined),
+              title: const Text('النسخ الاحتياطي والاستعادة'),
+              onTap: () {
+                Navigator.pop(context);
+                onBackup();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.favorite_border_rounded),
+              title: const Text('دعم المطور'),
+              onTap: () {
+                Navigator.pop(context);
+                onSupportDeveloper();
+              },
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        ListTile(leading: const Icon(Icons.add_box_outlined), title: const Text('إضافة منتج جديد'), onTap: () { Navigator.pop(context); onAddProduct(); }),
-        ListTile(leading: const Icon(Icons.receipt_long_outlined), title: const Text('سجل المبيعات'), onTap: () { Navigator.pop(context); onSalesHistory(); }),
-        ListTile(leading: const Icon(Icons.backup_outlined), title: const Text('النسخ الاحتياطي والاستعادة'), onTap: () { Navigator.pop(context); onBackup(); }),
-        ListTile(leading: const Icon(Icons.favorite_border_rounded), title: const Text('دعم المطور'), onTap: () { Navigator.pop(context); onSupportDeveloper(); }),
-      ]),
+      ),
     );
   }
 }
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onClearSearch});
+
   final VoidCallback onClearSearch;
 
   @override
   Widget build(BuildContext context) {
-    return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const Icon(Icons.inventory_2_outlined, size: 48, color: AppColors.textMuted),
-      const SizedBox(height: 12),
-      Text('لا توجد نتائج', style: Theme.of(context).textTheme.titleLarge),
-      const SizedBox(height: 12),
-      FilledButton(onPressed: onClearSearch, child: const Text('مسح البحث')),
-    ])));
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.inventory_2_outlined,
+              size: 48,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'لا توجد نتائج',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: onClearSearch,
+              child: const Text('مسح البحث'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
