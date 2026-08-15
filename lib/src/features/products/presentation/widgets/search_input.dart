@@ -31,7 +31,7 @@ class SearchInput extends StatelessWidget {
         onChanged: onChanged,
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
-          hintText: 'ابحث بالاسم، التصنيف أو الباركود',
+          hintText: 'ابحث بالاسم أو التصنيف',
           prefixIcon: const Icon(Icons.search_rounded),
           suffixIcon: IconButton(
             onPressed: () {
