@@ -3,8 +3,13 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme/app_theme.dart';
+import '../features/customer/presentation/screens/customer_home_screen.dart';
+import '../features/onboarding/application/app_role_controller.dart';
+import '../features/onboarding/domain/app_role.dart';
+import '../features/onboarding/presentation/role_selection_screen.dart';
 import '../features/orders/domain/order_payload.dart';
 import '../features/orders/presentation/order_link_screen.dart';
 import '../features/products/presentation/screens/home_screen.dart';
@@ -89,8 +94,32 @@ class _AtminaAppState extends State<AtminaApp> {
       ],
       home: const Directionality(
         textDirection: TextDirection.rtl,
-        child: HomeScreen(),
+        child: _RootRouter(),
       ),
+    );
+  }
+}
+
+class _RootRouter extends ConsumerWidget {
+  const _RootRouter();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final roleAsync = ref.watch(appRoleControllerProvider);
+
+    return roleAsync.when(
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, _) => const RoleSelectionScreen(),
+      data: (role) {
+        switch (role) {
+          case AppRole.merchant:
+            return const HomeScreen();
+          case AppRole.customer:
+            return const CustomerHomeScreen();
+          case null:
+            return const RoleSelectionScreen();
+        }
+      },
     );
   }
 }
