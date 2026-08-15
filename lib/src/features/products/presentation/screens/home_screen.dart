@@ -8,6 +8,7 @@ import '../../../cart/application/cart_controller.dart';
 import '../../../cart/presentation/screens/cart_screen.dart';
 import '../../../onboarding/application/app_role_controller.dart';
 import '../../../orders/presentation/sales_history_screen.dart';
+import '../../../store/presentation/screens/merchant_store_screen.dart';
 import '../../application/products_providers.dart';
 import '../../domain/models/product.dart';
 import '../widgets/add_product_dialog.dart';
@@ -63,6 +64,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onAddProduct: () => _openAddProductDialog(categories),
         onSalesHistory: () => _openPage(const SalesHistoryScreen()),
         onBackup: () => _openPage(const BackupRestoreScreen()),
+        onMyStore: () => _openPage(const MerchantStoreScreen()),
         onSupportDeveloper: _supportDeveloper,
         onSwitchRole: () => ref.read(appRoleControllerProvider.notifier).clearRole(),
       ),
@@ -359,6 +361,7 @@ class _HomeDrawer extends StatelessWidget {
     required this.onAddProduct,
     required this.onSalesHistory,
     required this.onBackup,
+    required this.onMyStore,
     required this.onSupportDeveloper,
     required this.onSwitchRole,
   });
@@ -366,6 +369,7 @@ class _HomeDrawer extends StatelessWidget {
   final VoidCallback onAddProduct;
   final VoidCallback onSalesHistory;
   final VoidCallback onBackup;
+  final VoidCallback onMyStore;
   final VoidCallback onSupportDeveloper;
   final VoidCallback onSwitchRole;
 
@@ -404,6 +408,14 @@ class _HomeDrawer extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 onSalesHistory();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.storefront_outlined),
+              title: const Text('متجري'),
+              onTap: () {
+                Navigator.pop(context);
+                onMyStore();
               },
             ),
             ListTile(
