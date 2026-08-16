@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/share_links.dart';
 import '../../../products/application/products_providers.dart';
 import '../../application/store_profile_controller.dart';
 import '../../application/store_service.dart';
@@ -197,8 +198,7 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
         whatsappNumber: whatsapp,
         products: products,
       );
-      final uri = Uri(scheme: 'atmina', host: 'store', path: '/${payload.encode()}');
-      final link = uri.toString();
+      final link = ShareLinks.storeLink(payload.encode());
 
       setState(() {
         _lastLink = link;
