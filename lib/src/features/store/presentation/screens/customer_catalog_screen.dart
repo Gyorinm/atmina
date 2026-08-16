@@ -100,6 +100,14 @@ class _CatalogItemCard extends StatelessWidget {
           Text(item.name, style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(item.category, style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
+          const SizedBox(height: 6),
+          Text(
+            item.stockQuantity > 0 ? 'المتوفر: ${item.stockQuantity}' : 'نفد المخزون',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: item.stockQuantity > 0 ? AppColors.success : AppColors.danger,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 14),
           Row(
             children: [
