@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/support_developer.dart';
 import '../../../backup/presentation/backup_restore_screen.dart';
 import '../../../cart/application/cart_controller.dart';
 import '../../../cart/presentation/screens/cart_screen.dart';
@@ -249,10 +249,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _supportDeveloper() async {
-    final uri = Uri.parse(
-      'https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=brahim0619087436%40gmail.com&currency_code=MAD&item_name=Atmina%20POS%20Developer%20Support',
-    );
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    await showSupportDeveloperSheet(context);
   }
 }
 
