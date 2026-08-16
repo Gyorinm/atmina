@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/constants/app_colors.dart';
@@ -122,6 +123,31 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
                 ),
                 const SizedBox(height: 12),
                 if (_lastLink != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      children: [
+                        QrImageView(
+                          data: _lastLink!,
+                          version: QrVersions.auto,
+                          size: 200,
+                          backgroundColor: Colors.white,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'اطلب من الزبون مسح هذا الرمز مباشرة للدخول إلى متجرك',
+                          style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
