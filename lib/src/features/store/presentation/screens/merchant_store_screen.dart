@@ -20,6 +20,8 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
   late final TextEditingController _whatsappController;
   bool _initialized = false;
   bool _sharing = false;
+  String? _lastLink;
+  int? _lastItemsCount;
 
   @override
   void initState() {
@@ -118,6 +120,43 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
                   label: Text(_sharing ? 'جارٍ التجهيز...' : 'تحديث ومشاركة رابط المتجر'),
                 ),
                 const SizedBox(height: 12),
+                if (_lastLink != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'الرابط يحتوي حاليًا على ${_lastItemsCount ?? 0} منتج.',
+                          style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                        ),
+                        const SizedBox(height: 10),
+                        SelectableText(
+                          _lastLink!,
+                          maxLines: 3,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: _lastLink!));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('تم نسخ الرابط الكامل')),
+                            );
+                          },
+                          icon: const Icon(Icons.link_rounded),
+                          label: const Text('نسخ الرابط الكامل'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 Text(
                   'شارك هذا الرابط مع الزبون عبر واتساب. الزبون يفتحه أو يلصقه داخل التطبيق لتصفح منتجاتك وإرسال طلبيته مباشرة.',
                   style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
@@ -142,7 +181,16 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
             whatsappNumber: whatsapp,
           );
 
-      final products = ref.read(productsControllerProvider).valueOrNull ?? const [];
+      final products = await ref.read(productsControllerProvider.future);
+      if (products.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('لا توجد منتجات في مخزونك حاليًا. أضف منتجات أولاً قبل مشاركة الرابط.')),
+          );
+        }
+        return;
+      }
+
       final payload = StoreService().buildPayload(
         storeCode: profile.storeCode,
         storeName: name,
@@ -150,10 +198,17 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
         products: products,
       );
       final uri = Uri(scheme: 'atmina', host: 'store', path: '/${payload.encode()}');
+      final link = uri.toString();
+
+      setState(() {
+        _lastLink = link;
+        _lastItemsCount = payload.items.length;
+      });
+
       await SharePlus.instance.share(
         ShareParams(
           text: 'متجر ${name.isEmpty ? profile.storeCode : name} على Atmina\n'
-              'افتح هذا الرابط لتصفح المنتجات وإرسال طلبيتك:\n$uri',
+              'افتح هذا الرابط لتصفح المنتجات وإرسال طلبيتك:\n$link',
           title: 'رابط المتجر',
         ),
       );
