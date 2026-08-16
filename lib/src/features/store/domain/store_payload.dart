@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:archive/archive.dart';
+
 class StorePayload {
   const StorePayload({
     required this.storeCode,
@@ -33,11 +35,17 @@ class StorePayload {
             .toList(growable: false),
       );
 
-  String encode() => base64UrlEncode(utf8.encode(jsonEncode(toMap()))).replaceAll('=', '');
+  String encode() {
+    final jsonBytes = utf8.encode(jsonEncode(toMap()));
+    final compressed = const ZLibEncoder().encode(jsonBytes);
+    return base64UrlEncode(compressed).replaceAll('=', '');
+  }
 
   static StorePayload decode(String value) {
     final padded = value.padRight((value.length + 3) ~/ 4 * 4, '=');
-    return StorePayload.fromMap(Map<String, dynamic>.from(jsonDecode(utf8.decode(base64Url.decode(padded))) as Map));
+    final compressed = base64Url.decode(padded);
+    final jsonBytes = const ZLibDecoder().decodeBytes(compressed);
+    return StorePayload.fromMap(Map<String, dynamic>.from(jsonDecode(utf8.decode(jsonBytes)) as Map));
   }
 }
 
