@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../application/customer_session_controller.dart';
-import '../../domain/store_payload.dart';
-import 'customer_catalog_screen.dart';
+import '../../application/store_opener.dart';
 import 'store_qr_scan_screen.dart';
 
 class CustomerStoreAccessScreen extends ConsumerStatefulWidget {
@@ -30,26 +28,16 @@ class _CustomerStoreAccessScreenState extends ConsumerState<CustomerStoreAccessS
       setState(() => _error = 'يرجى لصق رابط أو كود المتجر.');
       return;
     }
-    await _openEncoded(_extractEncodedSegment(raw));
+    await _openWith(_extractCode(raw));
   }
 
-  Future<void> _openEncoded(String encoded) async {
+  Future<void> _openWith(String code) async {
     setState(() {
       _loading = true;
       _error = null;
     });
-    try {
-      final payload = StorePayload.decode(encoded);
-      await ref.read(customerSessionControllerProvider.notifier).saveLastStore(encoded);
-      if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => CustomerCatalogScreen(payload: payload)),
-      );
-    } catch (_) {
-      setState(() => _error = 'الرابط أو الرمز غير صالح. تأكد أنك لصقت الرابط كاملاً كما أرسله التاجر.');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    await openStoreByCode(context, ref, code);
+    if (mounted) setState(() => _loading = false);
   }
 
   Future<void> _scan() async {
@@ -58,10 +46,10 @@ class _CustomerStoreAccessScreenState extends ConsumerState<CustomerStoreAccessS
     );
     if (result == null || result.isEmpty) return;
     _controller.text = result;
-    await _openEncoded(_extractEncodedSegment(result));
+    await _openWith(_extractCode(result));
   }
 
-  String _extractEncodedSegment(String raw) {
+  String _extractCode(String raw) {
     if (raw.contains('/')) {
       return raw.substring(raw.lastIndexOf('/') + 1);
     }
@@ -81,7 +69,7 @@ class _CustomerStoreAccessScreenState extends ConsumerState<CustomerStoreAccessS
             children: [
               const SizedBox(height: 12),
               Text(
-                'امسح رمز QR الخاص بالمتجر، أو الصق الرابط الذي أرسله لك التاجر عبر واتساب',
+                'امسح رمز QR الخاص بالمتجر، أو الصق الرابط أو الكود الذي أرسله لك التاجر عبر واتساب',
                 style: theme.textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
@@ -107,7 +95,7 @@ class _CustomerStoreAccessScreenState extends ConsumerState<CustomerStoreAccessS
                 controller: _controller,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: 'https://gyorinm.github.io/atmina/l.html#store/...',
+                  hintText: 'ATM-XXXXXXXXX أو رابط كامل',
                   errorText: _error,
                 ),
               ),
@@ -117,7 +105,7 @@ class _CustomerStoreAccessScreenState extends ConsumerState<CustomerStoreAccessS
                 icon: _loading
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.storefront_rounded),
-                label: Text(_loading ? 'جارٍ الفتح...' : 'فتح المتجر بالرابط'),
+                label: Text(_loading ? 'جارٍ الفتح...' : 'فتح المتجر'),
               ),
             ],
           ),
