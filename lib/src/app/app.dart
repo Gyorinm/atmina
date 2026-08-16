@@ -14,6 +14,7 @@ import '../features/orders/domain/order_payload.dart';
 import '../features/orders/presentation/order_link_screen.dart';
 import '../features/products/presentation/screens/home_screen.dart';
 import '../features/store/application/customer_session_controller.dart';
+import '../features/store/application/store_api_service.dart';
 import '../features/store/domain/store_payload.dart';
 import '../features/store/presentation/screens/customer_catalog_screen.dart';
 
@@ -63,26 +64,34 @@ class _AtminaAppState extends State<AtminaApp> {
   }
 
   void _navigateToLink(Uri uri) {
-    try {
-      if (uri.host == 'order') {
+    if (uri.host == 'order') {
+      try {
         final payload = OrderPayload.decode(uri.pathSegments.first);
         _navigatorKey.currentState!.push(
           MaterialPageRoute<void>(builder: (_) => OrderLinkScreen(payload: payload)),
         );
-      } else if (uri.host == 'store') {
-        final payload = StorePayload.decode(uri.pathSegments.first);
-        final navContext = _navigatorKey.currentContext;
-        if (navContext != null) {
-          ProviderScope.containerOf(navContext, listen: false)
-              .read(customerSessionControllerProvider.notifier)
-              .saveLastStore(uri.pathSegments.first);
-        }
-        _navigatorKey.currentState!.push(
-          MaterialPageRoute<void>(builder: (_) => CustomerCatalogScreen(payload: payload)),
-        );
+      } catch (_) {
+        // Ignore malformed order links.
       }
+    } else if (uri.host == 'store') {
+      final navContext = _navigatorKey.currentContext;
+      if (navContext == null) return;
+      final container = ProviderScope.containerOf(navContext, listen: false);
+      _openStoreLink(navContext, container, uri.pathSegments.first);
+    }
+  }
+
+  Future<void> _openStoreLink(BuildContext context, ProviderContainer container, String code) async {
+    try {
+      final json = await StoreApiService().fetchCatalog(code);
+      final payload = StorePayload.fromMap(json, fallbackCode: code);
+      await container.read(customerSessionControllerProvider.notifier).saveLastStore(code, payload.storeName);
+      if (!context.mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => CustomerCatalogScreen(payload: payload)),
+      );
     } catch (_) {
-      // Ignore malformed links.
+      // Ignore malformed or unreachable store links.
     }
   }
 
