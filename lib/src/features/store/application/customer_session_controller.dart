@@ -1,28 +1,39 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String _lastStoreKey = 'atmina_customer_last_store';
+const String _lastStoreCodeKey = 'atmina_customer_last_store_code';
+const String _lastStoreNameKey = 'atmina_customer_last_store_name';
+
+class CustomerLastStore {
+  const CustomerLastStore({required this.code, required this.name});
+  final String code;
+  final String name;
+}
 
 final customerSessionControllerProvider =
-    AsyncNotifierProvider<CustomerSessionController, String?>(CustomerSessionController.new);
+    AsyncNotifierProvider<CustomerSessionController, CustomerLastStore?>(CustomerSessionController.new);
 
-class CustomerSessionController extends AsyncNotifier<String?> {
+class CustomerSessionController extends AsyncNotifier<CustomerLastStore?> {
   @override
-  Future<String?> build() async {
+  Future<CustomerLastStore?> build() async {
     final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getString(_lastStoreKey);
-    return (value == null || value.isEmpty) ? null : value;
+    final code = prefs.getString(_lastStoreCodeKey);
+    if (code == null || code.isEmpty) return null;
+    final name = prefs.getString(_lastStoreNameKey) ?? '';
+    return CustomerLastStore(code: code, name: name);
   }
 
-  Future<void> saveLastStore(String encodedPayload) async {
+  Future<void> saveLastStore(String code, String name) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_lastStoreKey, encodedPayload);
-    state = AsyncData(encodedPayload);
+    await prefs.setString(_lastStoreCodeKey, code);
+    await prefs.setString(_lastStoreNameKey, name);
+    state = AsyncData(CustomerLastStore(code: code, name: name));
   }
 
   Future<void> clearLastStore() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_lastStoreKey);
+    await prefs.remove(_lastStoreCodeKey);
+    await prefs.remove(_lastStoreNameKey);
     state = const AsyncData(null);
   }
 }
