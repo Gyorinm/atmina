@@ -23,7 +23,7 @@ class CustomerHomeScreen extends ConsumerWidget {
         onMyOrders: () => Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const CustomerOrdersScreen()),
         ),
-        onSupportDeveloper: launchSupportDeveloper,
+        onSupportDeveloper: () => showSupportDeveloperSheet(context),
         onSwitchRole: () => ref.read(appRoleControllerProvider.notifier).clearRole(),
       ),
       body: SafeArea(
