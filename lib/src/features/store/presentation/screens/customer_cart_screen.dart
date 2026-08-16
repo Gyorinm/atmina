@@ -10,6 +10,8 @@ import '../../../cart/application/cart_controller.dart';
 import '../../../cart/presentation/widgets/cart_item_tile.dart';
 import '../../../orders/application/order_service.dart';
 import '../../../products/data/datasources/app_database.dart';
+import '../../application/customer_orders_controller.dart';
+import '../../domain/customer_order_record.dart';
 import '../../domain/store_payload.dart';
 
 class CustomerCartScreen extends ConsumerStatefulWidget {
@@ -108,6 +110,7 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
     setState(() => _sending = true);
     try {
       final cart = ref.read(cartItemsProvider);
+      final totals = ref.read(cartTotalsProvider);
       final orderService = OrderService(AppDatabase.instance);
       final orderPayload = orderService.buildPayload(
         cart.map((line) => (product: line.product, quantity: line.quantity)).toList(),
@@ -125,6 +128,17 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
       } else {
         await SharePlus.instance.share(ShareParams(text: message, title: 'إرسال الطلبية'));
       }
+
+      await ref.read(customerOrdersControllerProvider.notifier).addOrder(
+            CustomerOrderRecord(
+              orderCode: orderPayload.code,
+              storeCode: widget.payload.storeCode,
+              storeName: widget.payload.storeName,
+              total: totals.subtotal,
+              itemsCount: totals.totalQuantity,
+              createdAt: DateTime.now().toIso8601String(),
+            ),
+          );
 
       ref.read(cartControllerProvider.notifier).clear();
       if (mounted) {
