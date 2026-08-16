@@ -192,7 +192,7 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
                       : const Icon(Icons.cloud_upload_outlined),
-                  label: Text(_publishing ? 'جارٍ النشر...' : 'نشر تحديث المنتجات الآن'),
+                  label: Text(_publishing ? 'جارٍ المزامنة...' : 'إعادة مزامنة يدوية'),
                 ),
                 if (_lastPublishedAt != null) ...[
                   const SizedBox(height: 10),
@@ -204,7 +204,7 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
                 ],
                 const SizedBox(height: 12),
                 Text(
-                  'اضغط "نشر تحديث المنتجات" بعد كل تعديل على مخزونك (إضافة منتج، تغيير سعر...) حتى يظهر التحديث فورًا عند كل الزبناء دون الحاجة لإعادة مشاركة الرابط.',
+                  'منتجاتك تُنشر تلقائيًا للزبناء عند كل إضافة أو تعديل — لا حاجة لأي إجراء يدوي. هذا الزر مفيد فقط لإعادة المزامنة يدويًا (مثلاً بعد تعديل اسم المتجر أو رقم واتساب، أو بعد انقطاع الإنترنت).',
                   style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
                   textAlign: TextAlign.center,
                 ),
