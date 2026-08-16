@@ -1,7 +1,3 @@
-import 'dart:convert';
-
-import 'package:archive/archive.dart';
-
 class StorePayload {
   const StorePayload({
     required this.storeCode,
@@ -25,28 +21,15 @@ class StorePayload {
         'items': items.map((e) => e.toMap()).toList(),
       };
 
-  factory StorePayload.fromMap(Map<String, dynamic> map) => StorePayload(
-        storeCode: map['store_code'] as String,
+  factory StorePayload.fromMap(Map<String, dynamic> map, {String? fallbackCode}) => StorePayload(
+        storeCode: (map['store_code'] as String?) ?? fallbackCode ?? '',
         storeName: (map['store_name'] as String?) ?? '',
         whatsappNumber: (map['whatsapp_number'] as String?) ?? '',
         generatedAt: (map['generated_at'] as String?) ?? '',
-        items: (map['items'] as List)
+        items: (map['items'] as List? ?? const [])
             .map((e) => StorePayloadItem.fromMap(Map<String, dynamic>.from(e as Map)))
             .toList(growable: false),
       );
-
-  String encode() {
-    final jsonBytes = utf8.encode(jsonEncode(toMap()));
-    final compressed = const ZLibEncoder().encode(jsonBytes);
-    return base64UrlEncode(compressed).replaceAll('=', '');
-  }
-
-  static StorePayload decode(String value) {
-    final padded = value.padRight((value.length + 3) ~/ 4 * 4, '=');
-    final compressed = base64Url.decode(padded);
-    final jsonBytes = const ZLibDecoder().decodeBytes(compressed);
-    return StorePayload.fromMap(Map<String, dynamic>.from(jsonDecode(utf8.decode(jsonBytes)) as Map));
-  }
 }
 
 class StorePayloadItem {
