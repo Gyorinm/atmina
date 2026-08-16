@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/share_links.dart';
 import '../../../../core/extensions/currency_formatting.dart';
 import '../../../cart/application/cart_controller.dart';
 import '../../../cart/presentation/widgets/cart_item_tile.dart';
@@ -112,9 +113,9 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
         cart.map((line) => (product: line.product, quantity: line.quantity)).toList(),
         note: 'طلبية من متجر ${widget.payload.storeCode}',
       );
-      final uri = Uri(scheme: 'atmina', host: 'order', path: '/${orderPayload.encode()}');
+      final link = ShareLinks.orderLink(orderPayload.encode());
       final message = 'طلبية جديدة #${orderPayload.code} من متجرك على Atmina\n'
-          'افتح هذا الرابط داخل تطبيق Atmina لاستلامها:\n$uri';
+          'افتح هذا الرابط داخل تطبيق Atmina لاستلامها:\n$link';
 
       final whatsapp = widget.payload.whatsappNumber.trim();
       if (whatsapp.isNotEmpty) {
