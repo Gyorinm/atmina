@@ -5,8 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/support_developer.dart';
 import '../../../onboarding/application/app_role_controller.dart';
 import '../../../store/application/customer_session_controller.dart';
-import '../../../store/domain/store_payload.dart';
-import '../../../store/presentation/screens/customer_catalog_screen.dart';
+import '../../../store/application/store_opener.dart';
 import '../../../store/presentation/screens/customer_orders_screen.dart';
 import '../../../store/presentation/screens/customer_store_access_screen.dart';
 
@@ -47,22 +46,13 @@ class CustomerHomeScreen extends ConsumerWidget {
                 lastStoreAsync.when(
                   loading: () => const SizedBox.shrink(),
                   error: (error, _) => const SizedBox.shrink(),
-                  data: (encoded) {
-                    if (encoded == null) return const SizedBox.shrink();
-                    StorePayload? payload;
-                    try {
-                      payload = StorePayload.decode(encoded);
-                    } catch (_) {
-                      payload = null;
-                    }
-                    if (payload == null) return const SizedBox.shrink();
-                    final storeName = payload.storeName.isEmpty ? payload.storeCode : payload.storeName;
+                  data: (lastStore) {
+                    if (lastStore == null) return const SizedBox.shrink();
+                    final storeName = lastStore.name.isEmpty ? lastStore.code : lastStore.name;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: FilledButton.icon(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(builder: (_) => CustomerCatalogScreen(payload: payload!)),
-                        ),
+                        onPressed: () => openStoreByCode(context, ref, lastStore.code),
                         icon: const Icon(Icons.storefront_rounded),
                         label: Text('متابعة التسوق من $storeName'),
                       ),
