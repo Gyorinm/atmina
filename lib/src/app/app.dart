@@ -8,7 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_theme.dart';
 import '../features/customer/presentation/screens/customer_home_screen.dart';
 import '../features/onboarding/application/app_role_controller.dart';
+import '../features/onboarding/application/user_name_controller.dart';
 import '../features/onboarding/domain/app_role.dart';
+import '../features/onboarding/presentation/name_entry_screen.dart';
 import '../features/onboarding/presentation/role_selection_screen.dart';
 import '../features/orders/domain/order_payload.dart';
 import '../features/orders/presentation/order_link_screen.dart';
@@ -137,14 +139,40 @@ class _RootRouter extends ConsumerWidget {
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, _) => const RoleSelectionScreen(),
       data: (role) {
-        switch (role) {
-          case AppRole.merchant:
-            return const HomeScreen();
-          case AppRole.customer:
-            return const CustomerHomeScreen();
-          case null:
-            return const RoleSelectionScreen();
-        }
+        if (role == null) return const RoleSelectionScreen();
+        return const _NameGate();
+      },
+    );
+  }
+}
+
+class _NameGate extends ConsumerWidget {
+  const _NameGate();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final roleAsync = ref.watch(appRoleControllerProvider);
+    final nameAsync = ref.watch(userNameControllerProvider);
+
+    return nameAsync.when(
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, _) => const NameEntryScreen(),
+      data: (name) {
+        if (name == null || name.isEmpty) return const NameEntryScreen();
+        return roleAsync.when(
+          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (error, _) => const RoleSelectionScreen(),
+          data: (role) {
+            switch (role) {
+              case AppRole.merchant:
+                return const HomeScreen();
+              case AppRole.customer:
+                return const CustomerHomeScreen();
+              case null:
+                return const RoleSelectionScreen();
+            }
+          },
+        );
       },
     );
   }
