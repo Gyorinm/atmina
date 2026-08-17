@@ -9,6 +9,7 @@ class Product {
     required this.searchTerms,
     required this.createdAt,
     required this.updatedAt,
+    this.imagePath,
   });
 
   final int? id;
@@ -21,6 +22,10 @@ class Product {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// المسار المحلي لصورة المنتج المضغوطة (nullable — قد لا يملك
+  /// المنتج صورة). الصورة معروضة محليًا في واجهة التاجر على هذا الجهاز.
+  final String? imagePath;
+
   Product copyWith({
     int? id,
     String? name,
@@ -31,6 +36,8 @@ class Product {
     String? searchTerms,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? imagePath,
+    bool clearImagePath = false,
   }) {
     return Product(
       id: id ?? this.id,
@@ -42,6 +49,7 @@ class Product {
       searchTerms: searchTerms ?? this.searchTerms,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
     );
   }
 
@@ -56,6 +64,7 @@ class Product {
       searchTerms: map['search_terms'] as String,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      imagePath: map['image_path'] as String?,
     );
   }
 
@@ -70,6 +79,7 @@ class Product {
       'search_terms': searchTerms,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'image_path': imagePath,
     };
   }
 }
