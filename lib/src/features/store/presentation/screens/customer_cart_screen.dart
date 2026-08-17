@@ -8,6 +8,7 @@ import '../../../../core/constants/share_links.dart';
 import '../../../../core/extensions/currency_formatting.dart';
 import '../../../cart/application/cart_controller.dart';
 import '../../../cart/presentation/widgets/cart_item_tile.dart';
+import '../../../onboarding/application/user_name_controller.dart';
 import '../../../orders/application/order_service.dart';
 import '../../../products/data/datasources/app_database.dart';
 import '../../application/customer_orders_controller.dart';
@@ -111,13 +112,17 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
     try {
       final cart = ref.read(cartItemsProvider);
       final totals = ref.read(cartTotalsProvider);
+      final customerName = ref.read(userNameControllerProvider).valueOrNull ?? '';
       final orderService = OrderService(AppDatabase.instance);
       final orderPayload = orderService.buildPayload(
         cart.map((line) => (product: line.product, quantity: line.quantity)).toList(),
         note: 'طلبية من متجر ${widget.payload.storeCode}',
+        customerName: customerName,
       );
       final link = ShareLinks.orderLink(orderPayload.encode());
+      final customerLine = customerName.isEmpty ? '' : 'الزبون: $customerName\n';
       final message = 'طلبية جديدة #${orderPayload.code} من متجرك على Atmina\n'
+          '$customerLine'
           'افتح هذا الرابط داخل تطبيق Atmina لاستلامها:\n$link';
 
       final whatsapp = widget.payload.whatsappNumber.trim();
