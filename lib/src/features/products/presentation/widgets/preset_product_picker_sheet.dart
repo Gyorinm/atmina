@@ -92,7 +92,7 @@ class _PresetProductPickerSheetState extends State<PresetProductPickerSheet> {
                   controller: _searchController,
                   onChanged: (v) => setState(() => _query = v),
                   decoration: InputDecoration(
-                    hintText: 'ابحث عن منتج... (مثال: زيت، جافيل، حليب)',
+                    hintText: 'ابحث عن منتج... (مثال: Huile، Javel، Lait)',
                     prefixIcon: const Icon(Icons.search_rounded),
                     filled: true,
                     fillColor: AppColors.canvas,
