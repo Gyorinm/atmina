@@ -1,8 +1,12 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../application/product_image_picker.dart';
 import '../../application/products_providers.dart';
 import '../../data/moroccan_grocery_presets.dart';
 import '../../domain/models/create_product_input.dart';
@@ -25,6 +29,8 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
   late final TextEditingController _priceController;
   late final TextEditingController _stockController;
   bool _isSaving = false;
+  String? _imagePath;
+  bool _isPickingImage = false;
 
   @override
   void initState() {
@@ -55,6 +61,39 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
     });
   }
 
+  Future<void> _pickImage(bool fromCamera) async {
+    setState(() => _isPickingImage = true);
+    try {
+      final path = fromCamera
+          ? await ProductImagePicker.pickFromCamera()
+          : await ProductImagePicker.pickFromGallery();
+      if (path != null && mounted) {
+        // احذف الصورة السابقة إن وُجدت لتفادي تراكم ملفات غير مستخدمة.
+        final previous = _imagePath;
+        setState(() => _imagePath = path);
+        if (previous != null) {
+          unawaited(ProductImagePicker.deleteImage(previous));
+        }
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر التقاط الصورة: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPickingImage = false);
+    }
+  }
+
+  Future<void> _removeImage() async {
+    final previous = _imagePath;
+    setState(() => _imagePath = null);
+    if (previous != null) {
+      unawaited(ProductImagePicker.deleteImage(previous));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -69,6 +108,8 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                _buildImagePickerArea(),
+                const SizedBox(height: 16),
                 OutlinedButton.icon(
                   onPressed: _isSaving ? null : _pickFromPresetList,
                   icon: const Icon(Icons.storefront_rounded),
@@ -142,6 +183,69 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
     );
   }
 
+  Widget _buildImagePickerArea() {
+    return Column(
+      children: [
+        Container(
+          width: 96,
+          height: 96,
+          decoration: BoxDecoration(
+            color: AppColors.canvas,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.border),
+            image: _imagePath != null
+                ? DecorationImage(image: FileImage(File(_imagePath!)), fit: BoxFit.cover)
+                : null,
+          ),
+          child: _isPickingImage
+              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+              : _imagePath == null
+                  ? const Icon(Icons.image_outlined, color: AppColors.textMuted, size: 34)
+                  : null,
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _isPickingImage ? null : () => _pickImage(true),
+              icon: const Icon(Icons.camera_alt_outlined, size: 18),
+              label: const Text('التقاط صورة'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.navy,
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: _isPickingImage ? null : () => _pickImage(false),
+              icon: const Icon(Icons.photo_library_outlined, size: 18),
+              label: const Text('من المعرض'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.navy,
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+            if (_imagePath != null)
+              TextButton.icon(
+                onPressed: _isPickingImage ? null : _removeImage,
+                icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.danger),
+                label: const Text('إزالة', style: TextStyle(color: AppColors.danger)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'صورة اختيارية، تُضغط تلقائيًا لتصغير حجمها.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+        ),
+      ],
+    );
+  }
+
   Widget _field(
     TextEditingController controller,
     String label,
@@ -185,6 +289,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
           category: _categoryController.text.trim(),
           price: _parseDouble(_priceController.text.trim())!,
           stockQuantity: int.parse(_stockController.text.trim()),
+          imagePath: _imagePath,
         ),
       );
       if (mounted) Navigator.of(context).pop(product);
