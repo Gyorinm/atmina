@@ -3,13 +3,14 @@ import 'dart:convert';
 import 'package:archive/archive.dart';
 
 class OrderPayload {
-  const OrderPayload({required this.code, required this.createdAt, required this.items, this.note = ''});
+  const OrderPayload({required this.code, required this.createdAt, required this.items, this.note = '', this.customerName = ''});
   final String code;
   final String createdAt;
   final String note;
+  final String customerName;
   final List<OrderPayloadItem> items;
-  Map<String, dynamic> toMap() => {'code': code, 'created_at': createdAt, 'note': note, 'items': items.map((e) => e.toMap()).toList()};
-  factory OrderPayload.fromMap(Map<String, dynamic> map) => OrderPayload(code: map['code'] as String, createdAt: map['created_at'] as String, note: (map['note'] as String?) ?? '', items: (map['items'] as List).map((e) => OrderPayloadItem.fromMap(Map<String, dynamic>.from(e as Map))).toList(growable: false));
+  Map<String, dynamic> toMap() => {'code': code, 'created_at': createdAt, 'note': note, 'customer_name': customerName, 'items': items.map((e) => e.toMap()).toList()};
+  factory OrderPayload.fromMap(Map<String, dynamic> map) => OrderPayload(code: map['code'] as String, createdAt: map['created_at'] as String, note: (map['note'] as String?) ?? '', customerName: (map['customer_name'] as String?) ?? '', items: (map['items'] as List).map((e) => OrderPayloadItem.fromMap(Map<String, dynamic>.from(e as Map))).toList(growable: false));
   String encode() {
     final jsonBytes = utf8.encode(jsonEncode(toMap()));
     final compressed = const ZLibEncoder().encode(jsonBytes);
