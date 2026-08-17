@@ -4,6 +4,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../domain/models/create_product_input.dart';
 import '../../domain/models/product.dart';
+import '../../application/product_image_picker.dart';
 import '../datasources/app_database.dart';
 
 class ProductsRepository {
@@ -38,6 +39,7 @@ class ProductsRepository {
       ),
       createdAt: now,
       updatedAt: now,
+      imagePath: input.imagePath,
     );
 
     try {
@@ -66,6 +68,7 @@ class ProductsRepository {
   Future<void> deleteProduct(Product product) async {
     try {
       await _database.deleteProduct(product);
+      await ProductImagePicker.deleteImage(product.imagePath);
     } on DatabaseException {
       throw const ProductSaveException('تعذر حذف المنتج محليًا.');
     }
