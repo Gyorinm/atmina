@@ -50,6 +50,7 @@ class OrderService {
   OrderPayload buildPayload(
     List<({Product product, int quantity})> items, {
     String note = '',
+    String customerName = '',
   }) {
     if (items.isEmpty) {
       throw StateError('لا يمكن مشاركة سلة فارغة.');
@@ -58,6 +59,7 @@ class OrderService {
       code: newCode(),
       createdAt: DateTime.now().toIso8601String(),
       note: note,
+      customerName: customerName,
       items: items
           .map((e) => OrderPayloadItem(
                 barcode: e.product.barcode,
