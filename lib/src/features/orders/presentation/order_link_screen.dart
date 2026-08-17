@@ -41,7 +41,38 @@ class _OrderLinkScreenState extends ConsumerState<OrderLinkScreen> {
                   subtitle: Text('الإجمالي: ${total.toCurrency()}'),
                 ),
               ),
-              const SizedBox(height: 12),
+              if (widget.payload.customerName.isNotEmpty)
+                Card(
+                  color: const Color(0xFFEFF6FF),
+                  child: ListTile(
+                    leading: const Icon(Icons.person_outline_rounded),
+                    title: Text('الزبون: ${widget.payload.customerName}'),
+                  ),
+                )
+              else
+                const Card(
+                  color: Color(0xFFFFF4E5),
+                  child: ListTile(
+                    leading: Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                    title: Text('لم يُدخل الزبون اسمه في التطبيق.'),
+                  ),
+                ),
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(top: 12, bottom: 4),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF9E6),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFF5D98B)),
+                ),
+                child: const Text(
+                  'تأكد من اسم الزبون قبل تجهيز الطلبية، وتأكد من أنك سألت الزبون الخاص بك عن اسمه في التطبيق.',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF7A5B00)),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 8),
               Expanded(
                 child: ListView(
                   children: widget.payload.items
