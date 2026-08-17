@@ -5,7 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('يعرض الواجهة الرئيسية للتطبيق', (tester) async {
-    SharedPreferences.setMockInitialValues({'atmina_app_role': 'merchant'});
+    SharedPreferences.setMockInitialValues({
+      'atmina_app_role': 'merchant',
+      'atmina_user_name': 'مستخدم تجريبي',
+    });
 
     await tester.pumpWidget(
       const ProviderScope(
