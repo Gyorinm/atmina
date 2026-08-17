@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../application/products_providers.dart';
+import '../../data/moroccan_grocery_presets.dart';
 import '../../domain/models/create_product_input.dart';
+import 'preset_product_picker_sheet.dart';
 
 class AddProductDialog extends ConsumerStatefulWidget {
   const AddProductDialog({super.key, required this.existingCategories});
@@ -19,6 +21,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _categoryController;
+  late final TextEditingController _variantController;
   late final TextEditingController _priceController;
   late final TextEditingController _stockController;
   bool _isSaving = false;
@@ -28,6 +31,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
     super.initState();
     _nameController = TextEditingController();
     _categoryController = TextEditingController();
+    _variantController = TextEditingController();
     _priceController = TextEditingController();
     _stockController = TextEditingController(text: '1');
   }
@@ -36,9 +40,19 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
   void dispose() {
     _nameController.dispose();
     _categoryController.dispose();
+    _variantController.dispose();
     _priceController.dispose();
     _stockController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickFromPresetList() async {
+    final GroceryPresetItem? picked = await PresetProductPickerSheet.show(context);
+    if (picked == null) return;
+    setState(() {
+      _nameController.text = picked.name;
+      _categoryController.text = picked.category;
+    });
   }
 
   @override
@@ -55,11 +69,49 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                OutlinedButton.icon(
+                  onPressed: _isSaving ? null : _pickFromPresetList,
+                  icon: const Icon(Icons.storefront_rounded),
+                  label: const Text('اختيار من قائمة منتجات البقالة الجاهزة'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    side: const BorderSide(color: AppColors.navy),
+                    foregroundColor: AppColors.navy,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    const Expanded(child: Divider(color: AppColors.border)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text('أو أدخل يدويًا', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    ),
+                    const Expanded(child: Divider(color: AppColors.border)),
+                  ],
+                ),
+                const SizedBox(height: 14),
                 _field(_nameController, 'اسم المنتج', TextInputAction.next,
                     (v) => v == null || v.trim().isEmpty ? 'يرجى إدخال اسم المنتج.' : null),
                 const SizedBox(height: 12),
                 _field(_categoryController, 'التصنيف', TextInputAction.next,
                     (v) => v == null || v.trim().isEmpty ? 'يرجى إدخال التصنيف.' : null),
+                const SizedBox(height: 12),
+                _field(
+                  _variantController,
+                  'الحجم / الوزن (اختياري) — مثال: 1 لتر، 5 كغ، متوسط',
+                  TextInputAction.next,
+                  (_) => null,
+                ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    'اكتب الحجم كما تريد بنفسك، لتمييز نفس المنتج بأحجام مختلفة.',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 _field(_priceController, 'السعر بالدرهم (MAD)', TextInputAction.next, (v) {
                   final n = _parseDouble(v);
@@ -125,9 +177,11 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
     try {
+      final variant = _variantController.text.trim();
+      final fullName = variant.isEmpty ? _nameController.text.trim() : '${_nameController.text.trim()} - $variant';
       final product = await ref.read(productsControllerProvider.notifier).addProduct(
         CreateProductInput(
-          name: _nameController.text.trim(),
+          name: fullName,
           category: _categoryController.text.trim(),
           price: _parseDouble(_priceController.text.trim())!,
           stockQuantity: int.parse(_stockController.text.trim()),
