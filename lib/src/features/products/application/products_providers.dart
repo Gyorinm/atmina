@@ -61,6 +61,10 @@ class ProductsController extends AsyncNotifier<List<Product>> {
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async => build());
+    final items = state.valueOrNull;
+    if (items != null) {
+      unawaited(_autoPublish(items));
+    }
   }
 
   Future<Product> addProduct(CreateProductInput input) async {
