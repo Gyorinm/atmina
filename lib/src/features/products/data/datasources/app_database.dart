@@ -9,7 +9,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'atmina_pos.db';
-  static const int _databaseVersion = 4;
+  static const int _databaseVersion = 5;
   static const List<String> _legacySeedBarcodes = <String>[
     '628100000001','628100000002','628100000003','628100000004','628100000005',
     '628100000006','628100000007','628100000008','628100000009','628100000010',
@@ -48,6 +48,9 @@ class AppDatabase {
     }
     if (oldVersion < 3) await _removeLegacySeedProducts(db);
     if (oldVersion < 4) await _createOrdersTables(db);
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE $productsTable ADD COLUMN image_path TEXT');
+    }
   }
 
   Future<void> _createProductsTable(Database db) async {
@@ -61,7 +64,8 @@ class AppDatabase {
         stock_quantity INTEGER NOT NULL DEFAULT 0 CHECK(stock_quantity >= 0),
         search_terms TEXT NOT NULL,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        image_path TEXT
       )
     ''');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_products_search ON $productsTable(search_terms)');
