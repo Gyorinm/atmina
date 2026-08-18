@@ -10,7 +10,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'atmina_pos.db';
-  static const int _databaseVersion = 6;
+  static const int _databaseVersion = 7;
   static const List<String> _legacySeedBarcodes = <String>[
     '628100000001','628100000002','628100000003','628100000004','628100000005',
     '628100000006','628100000007','628100000008','628100000009','628100000010',
@@ -58,6 +58,9 @@ class AppDatabase {
       await _createProductFamiliesTable(db);
       await db.execute('ALTER TABLE $productsTable ADD COLUMN family_id INTEGER');
     }
+    if (oldVersion < 7) {
+      await db.execute('ALTER TABLE $productFamiliesTable ADD COLUMN image_exported_at TEXT');
+    }
   }
 
   Future<void> _createProductsTable(Database db) async {
@@ -88,6 +91,7 @@ class AppDatabase {
         name TEXT NOT NULL,
         category TEXT NOT NULL,
         image_path TEXT,
+        image_exported_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
