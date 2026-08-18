@@ -8,6 +8,7 @@ class ProductFamily {
     required this.name,
     required this.category,
     this.imagePath,
+    this.imageExportedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -16,8 +17,15 @@ class ProductFamily {
   final String name;
   final String category;
   final String? imagePath;
+
+  /// تاريخ آخر رفع ناجح للصورة إلى الخادم (null يعني أنها لم تُصدَّر
+  /// بعد، أو أن الصورة المحلية تغيّرت منذ آخر تصدير).
+  final DateTime? imageExportedAt;
+
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  bool get isExportedToServer => imageExportedAt != null;
 
   ProductFamily copyWith({
     int? id,
@@ -25,6 +33,8 @@ class ProductFamily {
     String? category,
     String? imagePath,
     bool clearImagePath = false,
+    DateTime? imageExportedAt,
+    bool clearImageExportedAt = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -33,17 +43,20 @@ class ProductFamily {
       name: name ?? this.name,
       category: category ?? this.category,
       imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
+      imageExportedAt: clearImageExportedAt ? null : (imageExportedAt ?? this.imageExportedAt),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
   factory ProductFamily.fromMap(Map<String, Object?> map) {
+    final exportedRaw = map['image_exported_at'] as String?;
     return ProductFamily(
       id: map['id'] as int?,
       name: map['name'] as String,
       category: map['category'] as String,
       imagePath: map['image_path'] as String?,
+      imageExportedAt: exportedRaw == null ? null : DateTime.parse(exportedRaw),
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );
@@ -55,6 +68,7 @@ class ProductFamily {
       'name': name,
       'category': category,
       'image_path': imagePath,
+      'image_exported_at': imageExportedAt?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
