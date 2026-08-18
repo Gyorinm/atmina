@@ -8,6 +8,9 @@ import '../../application/product_image_picker.dart';
 import '../../application/products_providers.dart';
 import '../../domain/models/product_family.dart';
 import '../../data/moroccan_grocery_presets.dart' show moroccanGroceryCategories;
+import '../../../store/application/store_profile_controller.dart';
+
+enum _ImageMenuAction { camera, gallery, remove, uploadToServer }
 
 /// شاشة سفلية (Bottom Sheet) لاختيار "عائلة منتج" من القائمة القابلة
 /// للتوسيع من طرف التاجر نفسه (تبدأ مبذورة بمنتجات البقالة المغربية
@@ -72,7 +75,7 @@ class _PresetProductPickerSheetState extends ConsumerState<PresetProductPickerSh
   }
 
   Future<void> _showImageSourceMenu(ProductFamily family) async {
-    final source = await showModalBottomSheet<bool>(
+    final action = await showModalBottomSheet<_ImageMenuAction>(
       context: context,
       builder: (context) => SafeArea(
         child: Wrap(
@@ -80,19 +83,75 @@ class _PresetProductPickerSheetState extends ConsumerState<PresetProductPickerSh
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined),
               title: const Text('التقاط صورة'),
-              onTap: () => Navigator.of(context).pop(true),
+              onTap: () => Navigator.of(context).pop(_ImageMenuAction.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
               title: const Text('من المعرض'),
-              onTap: () => Navigator.of(context).pop(false),
+              onTap: () => Navigator.of(context).pop(_ImageMenuAction.gallery),
             ),
+            if (family.imagePath != null) ...[
+              ListTile(
+                leading: const Icon(Icons.cloud_upload_outlined, color: AppColors.navy),
+                title: const Text('تصدير الصورة إلى الخادم'),
+                onTap: () => Navigator.of(context).pop(_ImageMenuAction.uploadToServer),
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
+                title: const Text('حذف الصورة', style: TextStyle(color: AppColors.danger)),
+                onTap: () => Navigator.of(context).pop(_ImageMenuAction.remove),
+              ),
+            ],
           ],
         ),
       ),
     );
-    if (source != null) {
-      await _attachFamilyImage(family, source);
+    if (action == null) return;
+    switch (action) {
+      case _ImageMenuAction.camera:
+        await _attachFamilyImage(family, true);
+      case _ImageMenuAction.gallery:
+        await _attachFamilyImage(family, false);
+      case _ImageMenuAction.remove:
+        await _removeFamilyImage(family);
+      case _ImageMenuAction.uploadToServer:
+        await _uploadFamilyImageToServer(family);
+    }
+  }
+
+  Future<void> _removeFamilyImage(ProductFamily family) async {
+    setState(() => _busyFamilyImageUpdateId = '${family.id}');
+    try {
+      await ref.read(productFamiliesControllerProvider.notifier).updateFamilyImage(family, null);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر حذف الصورة: $error')));
+      }
+    } finally {
+      if (mounted) setState(() => _busyFamilyImageUpdateId = null);
+    }
+  }
+
+  Future<void> _uploadFamilyImageToServer(ProductFamily family) async {
+    setState(() => _busyFamilyImageUpdateId = '${family.id}');
+    try {
+      final profile = await ref.read(storeProfileControllerProvider.future);
+      await ref.read(productFamiliesControllerProvider.notifier).uploadImageToServer(
+            family: family,
+            storeCode: profile.storeCode,
+            secret: profile.secret,
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تصدير الصورة إلى الخادم بنجاح.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر التصدير: $error')));
+      }
+    } finally {
+      if (mounted) setState(() => _busyFamilyImageUpdateId = null);
     }
   }
 
