@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -75,6 +77,37 @@ class ProductFamiliesController extends AsyncNotifier<List<ProductFamily>> {
     final current = state.valueOrNull ?? await build();
     final updated = current.where((f) => f.id != family.id).toList();
     state = AsyncData(updated);
+  }
+
+  /// يرفع صورة عائلة منتج محلية إلى الخادم لتصبح مرئية للزبائن.
+  /// يتطلب أن يملك المنتج معرّفًا (id) وصورة محلية محفوظة مسبقًا.
+  Future<void> uploadImageToServer({
+    required ProductFamily family,
+    required String storeCode,
+    required String secret,
+  }) async {
+    if (family.id == null) throw StateError('لا يمكن رفع صورة لمنتج غير محفوظ بعد.');
+    if (family.imagePath == null) throw StateError('لا توجد صورة محلية لهذا المنتج بعد.');
+
+    final bytes = await File(family.imagePath!).readAsBytes();
+    final base64Image = base64Encode(bytes);
+
+    await StoreApiService().uploadFamilyImage(
+      storeCode: storeCode,
+      secret: secret,
+      familyId: family.id!,
+      base64Image: base64Image,
+    );
+  }
+
+  /// يحذف صورة عائلة منتج من الخادم فقط (تبقى الصورة المحلية كما هي).
+  Future<void> deleteImageFromServer({
+    required ProductFamily family,
+    required String storeCode,
+    required String secret,
+  }) async {
+    if (family.id == null) return;
+    await StoreApiService().deleteFamilyImage(storeCode: storeCode, secret: secret, familyId: family.id!);
   }
 }
 
