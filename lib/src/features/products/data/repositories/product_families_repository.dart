@@ -59,12 +59,23 @@ class ProductFamiliesRepository {
     final updated = family.copyWith(
       imagePath: newImagePath,
       clearImagePath: newImagePath == null,
+      // أي تغيير في الصورة المحلية (جديدة أو محذوفة) يُبطل حالة
+      // "مُصدَّرة" السابقة، لأن الصورة على الخادم لم تعد مطابقة.
+      clearImageExportedAt: true,
       updatedAt: DateTime.now(),
     );
     await _database.updateProductFamily(updated);
     if (oldImagePath != null && oldImagePath != newImagePath) {
       await ProductImagePicker.deleteImage(oldImagePath);
     }
+    return updated;
+  }
+
+  /// يُعلّم صورة العائلة كمُصدَّرة بنجاح إلى الخادم بتاريخ اليوم،
+  /// لتظهر علامة الصح الخضراء في واجهة الاختيار.
+  Future<ProductFamily> markImageExported(ProductFamily family) async {
+    final updated = family.copyWith(imageExportedAt: DateTime.now());
+    await _database.updateProductFamily(updated);
     return updated;
   }
 
