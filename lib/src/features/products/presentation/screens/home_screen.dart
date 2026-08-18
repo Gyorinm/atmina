@@ -204,12 +204,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
     if (confirmed != true || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(productsControllerProvider.notifier).deleteProduct(product);
       ref.read(cartControllerProvider.notifier).removeProduct(product);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text(error.toString())),
       );
     }
