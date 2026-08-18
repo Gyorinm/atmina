@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/utils/support_developer.dart';
-import '../../../onboarding/application/app_role_controller.dart';
 import '../../../store/application/customer_session_controller.dart';
 import '../../../store/application/store_opener.dart';
-import '../../../store/presentation/screens/customer_orders_screen.dart';
 import '../../../store/presentation/screens/customer_store_access_screen.dart';
 
+/// تبويب "الرئيسية" لدى الزبون: الدخول لمتجر عبر رمز QR أو رابط، أو
+/// متابعة التسوق من آخر متجر تمت زيارته.
 class CustomerHomeScreen extends ConsumerWidget {
   const CustomerHomeScreen({super.key});
 
@@ -19,13 +18,6 @@ class CustomerHomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('واجهة الزبون')),
-      drawer: _CustomerDrawer(
-        onMyOrders: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const CustomerOrdersScreen()),
-        ),
-        onSupportDeveloper: () => showSupportDeveloperSheet(context),
-        onSwitchRole: () => ref.read(appRoleControllerProvider.notifier).clearRole(),
-      ),
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -69,70 +61,6 @@ class CustomerHomeScreen extends ConsumerWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CustomerDrawer extends StatelessWidget {
-  const _CustomerDrawer({
-    required this.onMyOrders,
-    required this.onSupportDeveloper,
-    required this.onSwitchRole,
-  });
-
-  final VoidCallback onMyOrders;
-  final VoidCallback onSupportDeveloper;
-  final VoidCallback onSwitchRole;
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              color: AppColors.navy,
-              child: Row(
-                children: [
-                  const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 28),
-                  const SizedBox(width: 12),
-                  Text(
-                    'حساب الزبون',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.receipt_long_outlined),
-              title: const Text('طلبياتي'),
-              onTap: () {
-                Navigator.pop(context);
-                onMyOrders();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.favorite_border_rounded),
-              title: const Text('دعم المطور'),
-              onTap: () {
-                Navigator.pop(context);
-                onSupportDeveloper();
-              },
-            ),
-            const Divider(height: 24),
-            ListTile(
-              leading: const Icon(Icons.swap_horiz_rounded),
-              title: const Text('تبديل نوع الحساب'),
-              onTap: () {
-                Navigator.pop(context);
-                onSwitchRole();
-              },
-            ),
-          ],
         ),
       ),
     );
