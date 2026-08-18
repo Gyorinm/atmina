@@ -10,6 +10,7 @@ class Product {
     required this.createdAt,
     required this.updatedAt,
     this.imagePath,
+    this.familyId,
   });
 
   final int? id;
@@ -22,9 +23,13 @@ class Product {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  /// المسار المحلي لصورة المنتج المضغوطة (nullable — قد لا يملك
-  /// المنتج صورة). الصورة معروضة محليًا في واجهة التاجر على هذا الجهاز.
+  /// المسار المحلي لصورة المنتج المضغوطة (اختياري). إذا كان فارغًا
+  /// وكان المنتج مرتبطًا بـ[familyId]، تُستخدم صورة العائلة بدلًا منه.
   final String? imagePath;
+
+  /// معرّف "عائلة المنتج" التي ينتمي إليها هذا المنتج (مثال: كل
+  /// أحجام ماء سيدي علي تنتمي لعائلة واحدة تحمل صورة واحدة).
+  final int? familyId;
 
   Product copyWith({
     int? id,
@@ -38,6 +43,8 @@ class Product {
     DateTime? updatedAt,
     String? imagePath,
     bool clearImagePath = false,
+    int? familyId,
+    bool clearFamilyId = false,
   }) {
     return Product(
       id: id ?? this.id,
@@ -50,6 +57,7 @@ class Product {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
+      familyId: clearFamilyId ? null : (familyId ?? this.familyId),
     );
   }
 
@@ -65,6 +73,7 @@ class Product {
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
       imagePath: map['image_path'] as String?,
+      familyId: (map['family_id'] as num?)?.toInt(),
     );
   }
 
@@ -80,6 +89,7 @@ class Product {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'image_path': imagePath,
+      'family_id': familyId,
     };
   }
 }
