@@ -39,6 +39,7 @@ class StorePayloadItem {
     required this.category,
     required this.price,
     required this.stockQuantity,
+    this.familyId,
   });
 
   final String internalCode;
@@ -47,12 +48,17 @@ class StorePayloadItem {
   final double price;
   final int stockQuantity;
 
+  /// معرّف "عائلة المنتج" إن وُجد، يُستخدم من تطبيق الزبون لبناء رابط
+  /// صورة المنتج المخزَّنة على الخادم (/store/{code}/images/{familyId}).
+  final int? familyId;
+
   Map<String, dynamic> toMap() => {
         'internal_code': internalCode,
         'name': name,
         'category': category,
         'price': price,
         'stock_quantity': stockQuantity,
+        if (familyId != null) 'family_id': familyId,
       };
 
   factory StorePayloadItem.fromMap(Map<String, dynamic> map) => StorePayloadItem(
@@ -61,5 +67,6 @@ class StorePayloadItem {
         category: (map['category'] as String?) ?? '',
         price: (map['price'] as num).toDouble(),
         stockQuantity: (map['stock_quantity'] as num?)?.toInt() ?? 0,
+        familyId: (map['family_id'] as num?)?.toInt(),
       );
 }
