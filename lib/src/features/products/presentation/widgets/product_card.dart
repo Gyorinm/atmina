@@ -13,6 +13,7 @@ class ProductCard extends StatelessWidget {
     required this.onAdd,
     required this.onUpdateStock,
     required this.onDelete,
+    this.familyImagePath,
   });
 
   final Product product;
@@ -20,9 +21,14 @@ class ProductCard extends StatelessWidget {
   final VoidCallback onUpdateStock;
   final VoidCallback onDelete;
 
+  /// صورة "عائلة المنتج" التي ينتمي إليها هذا المنتج، تُستخدم كبديل
+  /// عند عدم وجود صورة خاصة بهذا المنتج تحديدًا.
+  final String? familyImagePath;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final effectiveImagePath = product.imagePath ?? familyImagePath;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -45,11 +51,11 @@ class ProductCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (product.imagePath != null) ...[
+              if (effectiveImagePath != null) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(14),
                   child: Image.file(
-                    File(product.imagePath!),
+                    File(effectiveImagePath),
                     width: 52,
                     height: 52,
                     fit: BoxFit.cover,
