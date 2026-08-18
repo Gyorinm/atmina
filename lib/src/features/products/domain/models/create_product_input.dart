@@ -5,6 +5,7 @@ class CreateProductInput {
     required this.price,
     required this.stockQuantity,
     this.imagePath,
+    this.familyId,
   });
 
   final String name;
@@ -12,6 +13,10 @@ class CreateProductInput {
   final double price;
   final int stockQuantity;
 
-  /// مسار الصورة المحلية المضغوطة (اختياري).
+  /// مسار صورة خاصة بهذا المنتج (اختياري)، تُستخدم فقط إذا لم يكن
+  /// المنتج مرتبطًا بعائلة تملك صورتها الخاصة.
   final String? imagePath;
+
+  /// عائلة المنتج التي ينتمي إليها هذا الحجم/النوع (اختياري).
+  final int? familyId;
 }
