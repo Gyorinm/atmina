@@ -40,6 +40,7 @@ class ProductsRepository {
       createdAt: now,
       updatedAt: now,
       imagePath: input.imagePath,
+      familyId: input.familyId,
     );
 
     try {
@@ -68,7 +69,10 @@ class ProductsRepository {
   Future<void> deleteProduct(Product product) async {
     try {
       await _database.deleteProduct(product);
-      await ProductImagePicker.deleteImage(product.imagePath);
+      // لا نحذف الصورة إذا كانت موروثة من عائلة مشتركة مع منتجات أخرى.
+      if (product.familyId == null) {
+        await ProductImagePicker.deleteImage(product.imagePath);
+      }
     } on DatabaseException {
       throw const ProductSaveException('تعذر حذف المنتج محليًا.');
     }
