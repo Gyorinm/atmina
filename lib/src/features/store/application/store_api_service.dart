@@ -53,6 +53,9 @@ class StoreApiService {
     if (response.statusCode != 200) {
       throw StoreApiException('تعذر تحميل بيانات المتجر (${response.statusCode}).');
     }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   /// يرفع صورة عائلة منتج مضغوطة (Base64) إلى الخادم لتصبح مرئية
   /// للزبائن ضمن كتالوج المتجر.
   Future<void> uploadFamilyImage({
