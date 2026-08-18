@@ -2,13 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/utils/support_developer.dart';
-import '../../../backup/presentation/backup_restore_screen.dart';
 import '../../../cart/application/cart_controller.dart';
-import '../../../cart/presentation/screens/cart_screen.dart';
-import '../../../onboarding/application/app_role_controller.dart';
-import '../../../orders/presentation/sales_history_screen.dart';
-import '../../../store/presentation/screens/merchant_store_screen.dart';
 import '../../application/products_providers.dart';
 import '../../domain/models/product.dart';
 import '../widgets/add_product_dialog.dart';
@@ -60,25 +54,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: const Icon(Icons.add_box_outlined),
           ),
         ],
-      ),
-      drawer: _HomeDrawer(
-        onAddProduct: () => _openAddProductDialog(categories),
-        onSalesHistory: () => _openPage(const SalesHistoryScreen()),
-        onBackup: () => _openPage(const BackupRestoreScreen()),
-        onMyStore: () => _openPage(const MerchantStoreScreen()),
-        onSupportDeveloper: _supportDeveloper,
-        onSwitchRole: () => ref.read(appRoleControllerProvider.notifier).clearRole(),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openPage(const CartScreen()),
-        backgroundColor: AppColors.navy,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.point_of_sale_rounded),
-        label: Text(
-          cartTotals.totalQuantity > 0
-              ? 'السلة (${cartTotals.totalQuantity})'
-              : 'السلة',
-        ),
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -189,17 +164,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _openPage(Widget page) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: page,
-        ),
-      ),
-    );
-  }
-
   void _addProduct(BuildContext context, Product product) {
     final added = ref.read(cartControllerProvider.notifier).addProduct(product);
     if (!added && context.mounted) {
@@ -249,10 +213,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         SnackBar(content: Text(error.toString())),
       );
     }
-  }
-
-  Future<void> _supportDeveloper() async {
-    await showSupportDeveloperSheet(context);
   }
 }
 
@@ -351,135 +311,6 @@ class _InventoryAlertCard extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _HomeDrawer extends StatelessWidget {
-  const _HomeDrawer({
-    required this.onAddProduct,
-    required this.onSalesHistory,
-    required this.onBackup,
-    required this.onMyStore,
-    required this.onSupportDeveloper,
-    required this.onSwitchRole,
-  });
-
-  final VoidCallback onAddProduct;
-  final VoidCallback onSalesHistory;
-  final VoidCallback onBackup;
-  final VoidCallback onMyStore;
-  final VoidCallback onSupportDeveloper;
-  final VoidCallback onSwitchRole;
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.navy,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Text(
-                'Atmina POS',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                    ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.add_box_outlined),
-              title: const Text('إضافة منتج جديد'),
-              onTap: () {
-                Navigator.pop(context);
-                onAddProduct();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.receipt_long_outlined),
-              title: const Text('سجل المبيعات'),
-              onTap: () {
-                Navigator.pop(context);
-                onSalesHistory();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.storefront_outlined),
-              title: const Text('متجري'),
-              onTap: () {
-                Navigator.pop(context);
-                onMyStore();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.backup_outlined),
-              title: const Text('النسخ الاحتياطي والاستعادة'),
-              onTap: () {
-                Navigator.pop(context);
-                onBackup();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.favorite_border_rounded),
-              title: const Text('دعم المطور'),
-              onTap: () {
-                Navigator.pop(context);
-                onSupportDeveloper();
-              },
-            ),
-            const Divider(height: 24),
-            ListTile(
-              leading: const Icon(Icons.swap_horiz_rounded),
-              title: const Text('تبديل نوع الحساب'),
-              onTap: () {
-                Navigator.pop(context);
-                onSwitchRole();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onClearSearch});
-
-  final VoidCallback onClearSearch;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.inventory_2_outlined,
-              size: 48,
-              color: AppColors.textMuted,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'لا توجد نتائج',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: onClearSearch,
-              child: const Text('مسح البحث'),
-            ),
-          ],
-        ),
       ),
     );
   }
