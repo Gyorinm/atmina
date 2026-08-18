@@ -48,6 +48,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final outOfStock = ref.watch(outOfStockProductsProvider).valueOrNull ?? const <Product>[];
     final lowStock = ref.watch(lowStockProductsProvider).valueOrNull ?? const <Product>[];
     final cartTotals = ref.watch(cartTotalsProvider);
+    final familiesById = ref.watch(productFamiliesByIdProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -153,8 +154,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
                               final product = products[index];
+                              final family = product.familyId != null ? familiesById[product.familyId] : null;
                               return ProductCard(
                                 product: product,
+                                familyImagePath: family?.imagePath,
                                 onAdd: () => _addProduct(context, product),
                                 onUpdateStock: () => _updateStock(context, product),
                                 onDelete: () => _deleteProduct(context, product),
