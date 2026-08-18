@@ -349,6 +349,7 @@ class AppDatabase {
   }
 
 
+  Future<void> _removeLegacySeedProducts(Database db) async {
     final placeholders = List<String>.filled(_legacySeedBarcodes.length, '?').join(', ');
     await db.delete(productsTable, where: 'barcode IN ($placeholders)', whereArgs: _legacySeedBarcodes);
   }
