@@ -2,6 +2,7 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
 import '../../domain/models/product.dart';
+import '../../domain/models/product_family.dart';
 
 class AppDatabase {
   AppDatabase._();
@@ -9,13 +10,14 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const String _databaseName = 'atmina_pos.db';
-  static const int _databaseVersion = 5;
+  static const int _databaseVersion = 6;
   static const List<String> _legacySeedBarcodes = <String>[
     '628100000001','628100000002','628100000003','628100000004','628100000005',
     '628100000006','628100000007','628100000008','628100000009','628100000010',
   ];
 
   static const String productsTable = 'products';
+  static const String productFamiliesTable = 'product_families';
   static const String ordersTable = 'orders';
   static const String orderItemsTable = 'order_items';
 
@@ -40,6 +42,7 @@ class AppDatabase {
   Future<void> _onCreate(Database db, int version) async {
     await _createProductsTable(db);
     await _createOrdersTables(db);
+    await _createProductFamiliesTable(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -50,6 +53,10 @@ class AppDatabase {
     if (oldVersion < 4) await _createOrdersTables(db);
     if (oldVersion < 5) {
       await db.execute('ALTER TABLE $productsTable ADD COLUMN image_path TEXT');
+    }
+    if (oldVersion < 6) {
+      await _createProductFamiliesTable(db);
+      await db.execute('ALTER TABLE $productsTable ADD COLUMN family_id INTEGER');
     }
   }
 
@@ -65,12 +72,27 @@ class AppDatabase {
         search_terms TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        image_path TEXT
+        image_path TEXT,
+        family_id INTEGER
       )
     ''');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_products_search ON $productsTable(search_terms)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_products_barcode ON $productsTable(barcode)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_products_category ON $productsTable(category)');
+  }
+
+  Future<void> _createProductFamiliesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $productFamiliesTable (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        category TEXT NOT NULL,
+        image_path TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_families_category ON $productFamiliesTable(category)');
   }
 
   Future<void> _createOrdersTables(Database db) async {
@@ -276,7 +298,57 @@ class AppDatabase {
     });
   }
 
-  Future<void> _removeLegacySeedProducts(Database db) async {
+  // ===== Product families =====
+
+  Future<List<ProductFamily>> getAllProductFamilies() async {
+    final db = await database;
+    final rows = await db.query(productFamiliesTable, orderBy: 'name COLLATE NOCASE ASC');
+    return rows.map(ProductFamily.fromMap).toList(growable: false);
+  }
+
+  Future<int> countProductFamilies() async {
+    final db = await database;
+    final result = await db.rawQuery('SELECT COUNT(*) AS count FROM $productFamiliesTable');
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  Future<ProductFamily> insertProductFamily(ProductFamily family) async {
+    final db = await database;
+    final id = await db.insert(productFamiliesTable, family.toMap()..remove('id'));
+    return family.copyWith(id: id);
+  }
+
+  Future<void> insertProductFamiliesBatch(List<ProductFamily> families) async {
+    final db = await database;
+    final batch = db.batch();
+    for (final family in families) {
+      batch.insert(productFamiliesTable, family.toMap()..remove('id'));
+    }
+    await batch.commit(noResult: true);
+  }
+
+  Future<ProductFamily> updateProductFamily(ProductFamily family) async {
+    final db = await database;
+    final updated = await db.update(
+      productFamiliesTable,
+      family.toMap()..remove('id'),
+      where: 'id = ?',
+      whereArgs: [family.id],
+    );
+    if (updated == 0) throw StateError('عائلة المنتج غير موجودة.');
+    return family;
+  }
+
+  Future<void> deleteProductFamily(int familyId) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      // فك ارتباط أي منتجات كانت تابعة لهذه العائلة قبل حذفها.
+      await txn.update(productsTable, {'family_id': null}, where: 'family_id = ?', whereArgs: [familyId]);
+      await txn.delete(productFamiliesTable, where: 'id = ?', whereArgs: [familyId]);
+    });
+  }
+
+
     final placeholders = List<String>.filled(_legacySeedBarcodes.length, '?').join(', ');
     await db.delete(productsTable, where: 'barcode IN ($placeholders)', whereArgs: _legacySeedBarcodes);
   }
