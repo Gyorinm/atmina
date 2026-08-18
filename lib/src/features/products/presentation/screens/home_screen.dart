@@ -315,3 +315,38 @@ class _InventoryAlertCard extends StatelessWidget {
     );
   }
 }
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.onClearSearch});
+
+  final VoidCallback onClearSearch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.inventory_2_outlined,
+              size: 48,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'لا توجد نتائج',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: onClearSearch,
+              child: const Text('مسح البحث'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
