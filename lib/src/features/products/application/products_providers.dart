@@ -6,9 +6,11 @@ import '../../store/application/store_api_service.dart';
 import '../../store/application/store_profile_controller.dart';
 import '../../store/application/store_service.dart';
 import '../data/datasources/app_database.dart';
+import '../data/repositories/product_families_repository.dart';
 import '../data/repositories/products_repository.dart';
 import '../domain/models/create_product_input.dart';
 import '../domain/models/product.dart';
+import '../domain/models/product_family.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   return AppDatabase.instance;
@@ -17,6 +19,64 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 final productsRepositoryProvider = Provider<ProductsRepository>((ref) {
   return ProductsRepository(ref.watch(appDatabaseProvider));
 });
+
+final productFamiliesRepositoryProvider = Provider<ProductFamiliesRepository>((ref) {
+  return ProductFamiliesRepository(ref.watch(appDatabaseProvider));
+});
+
+final productFamiliesControllerProvider =
+    AsyncNotifierProvider<ProductFamiliesController, List<ProductFamily>>(
+  ProductFamiliesController.new,
+);
+
+/// خريطة سريعة من معرّف العائلة إلى العائلة نفسها، لاستخدامها عند
+/// عرض صورة موروثة من العائلة على بطاقة منتج معيّن.
+final productFamiliesByIdProvider = Provider<Map<int, ProductFamily>>((ref) {
+  final families = ref.watch(productFamiliesControllerProvider).valueOrNull ?? const <ProductFamily>[];
+  return {for (final family in families) if (family.id != null) family.id!: family};
+});
+
+class ProductFamiliesController extends AsyncNotifier<List<ProductFamily>> {
+  @override
+  Future<List<ProductFamily>> build() async {
+    final repository = ref.watch(productFamiliesRepositoryProvider);
+    return repository.fetchFamilies();
+  }
+
+  Future<ProductFamily> addFamily({
+    required String name,
+    required String category,
+    String? imagePath,
+  }) async {
+    final repository = ref.read(productFamiliesRepositoryProvider);
+    final family = await repository.addFamily(name: name, category: category, imagePath: imagePath);
+
+    final current = state.valueOrNull ?? await build();
+    final updated = [...current, family]..sort((a, b) => a.name.compareTo(b.name));
+    state = AsyncData(updated);
+    return family;
+  }
+
+  Future<ProductFamily> updateFamilyImage(ProductFamily family, String? newImagePath) async {
+    final repository = ref.read(productFamiliesRepositoryProvider);
+    final updatedFamily = await repository.updateFamilyImage(family, newImagePath);
+
+    final current = state.valueOrNull ?? await build();
+    final updated = current.map((f) => f.id == updatedFamily.id ? updatedFamily : f).toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+    state = AsyncData(updated);
+    return updatedFamily;
+  }
+
+  Future<void> deleteFamily(ProductFamily family) async {
+    final repository = ref.read(productFamiliesRepositoryProvider);
+    await repository.deleteFamily(family);
+
+    final current = state.valueOrNull ?? await build();
+    final updated = current.where((f) => f.id != family.id).toList();
+    state = AsyncData(updated);
+  }
+}
 
 final productSearchQueryProvider = StateProvider<String>((ref) => '');
 
