@@ -47,6 +47,7 @@ class CustomerCatalogScreen extends ConsumerWidget {
                   final product = _productFor(item);
                   return _CatalogItemCard(
                     item: item,
+                    storeCode: payload.storeCode,
                     onAdd: () {
                       final added = ref.read(cartControllerProvider.notifier).addProduct(product);
                       if (!added) {
@@ -78,9 +79,10 @@ class CustomerCatalogScreen extends ConsumerWidget {
 }
 
 class _CatalogItemCard extends StatelessWidget {
-  const _CatalogItemCard({required this.item, required this.onAdd});
+  const _CatalogItemCard({required this.item, required this.storeCode, required this.onAdd});
 
   final StorePayloadItem item;
+  final String storeCode;
   final VoidCallback onAdd;
 
   @override
@@ -94,7 +96,50 @@ class _CatalogItemCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (item.familyId != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.network(
+                'https://atmina-store-api.o2730884.workers.dev/store/$storeCode/images/${item.familyId}',
+                width: 64,
+                height: 64,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return Container(
+                    width: 64,
+                    height: 64,
+                    color: AppColors.canvas,
+                    child: const Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(color: AppColors.canvas, borderRadius: BorderRadius.circular(16)),
+                  child: const Icon(Icons.image_not_supported_outlined, color: AppColors.textMuted, size: 22),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+          ],
+          Expanded(child: _buildDetails(theme)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetails(ThemeData theme) {
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(item.name, style: theme.textTheme.titleMedium),
@@ -126,7 +171,6 @@ class _CatalogItemCard extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
+      );
   }
 }
