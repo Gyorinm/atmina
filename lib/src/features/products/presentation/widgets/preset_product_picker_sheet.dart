@@ -295,29 +295,55 @@ class _PresetProductPickerSheetState extends ConsumerState<PresetProductPickerSh
                         return ListTile(
                           leading: GestureDetector(
                             onTap: isBusy ? null : () => _showImageSourceMenu(family),
-                            child: Container(
-                              width: 46,
-                              height: 46,
-                              decoration: BoxDecoration(
-                                color: AppColors.canvas,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.border),
-                                image: family.imagePath != null
-                                    ? DecorationImage(image: FileImage(File(family.imagePath!)), fit: BoxFit.cover)
-                                    : null,
-                              ),
-                              child: isBusy
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(12),
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    )
-                                  : family.imagePath == null
-                                      ? const Icon(Icons.add_a_photo_outlined, color: AppColors.textMuted, size: 18)
-                                      : null,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  width: 46,
+                                  height: 46,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.canvas,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.border),
+                                    image: family.imagePath != null
+                                        ? DecorationImage(image: FileImage(File(family.imagePath!)), fit: BoxFit.cover)
+                                        : null,
+                                  ),
+                                  child: isBusy
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(12),
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : family.imagePath == null
+                                          ? const Icon(Icons.add_a_photo_outlined, color: AppColors.textMuted, size: 18)
+                                          : null,
+                                ),
+                                if (family.imagePath != null && !isBusy)
+                                  Positioned(
+                                    bottom: -4,
+                                    left: -4,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                      child: Icon(
+                                        family.isExportedToServer ? Icons.cloud_done_rounded : Icons.cloud_off_outlined,
+                                        size: 16,
+                                        color: family.isExportedToServer ? AppColors.success : AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                           title: Text(family.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text(family.category, style: const TextStyle(color: AppColors.textMuted)),
+                          subtitle: Text(
+                            family.isExportedToServer
+                                ? '${family.category} · مُصدَّرة للخادم ✓'
+                                : family.category,
+                            style: TextStyle(
+                              color: family.isExportedToServer ? AppColors.success : AppColors.textMuted,
+                            ),
+                          ),
                           trailing: const Icon(Icons.chevron_left_rounded, color: AppColors.navy),
                           onTap: () => Navigator.of(context).pop(family),
                         );
