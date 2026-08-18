@@ -98,6 +98,13 @@ class ProductFamiliesController extends AsyncNotifier<List<ProductFamily>> {
       familyId: family.id!,
       base64Image: base64Image,
     );
+
+    // نُعلّم العائلة محليًا كـ"مُصدَّرة" ليظهر مؤشر النجاح في الحال.
+    final repository = ref.read(productFamiliesRepositoryProvider);
+    final updatedFamily = await repository.markImageExported(family);
+    final current = state.valueOrNull ?? await build();
+    final updatedList = current.map((f) => f.id == updatedFamily.id ? updatedFamily : f).toList();
+    state = AsyncData(updatedList);
   }
 
   /// يحذف صورة عائلة منتج من الخادم فقط (تبقى الصورة المحلية كما هي).
