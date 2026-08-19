@@ -114,6 +114,25 @@ class ProductFamiliesRepository {
     return updated;
   }
 
+  /// يعيد تسمية عائلة منتج (اسمها وتصنيفها)، ويُحدّث تلقائيًا كل
+  /// المنتجات المرتبطة بها لتُطابق الاسم الجديد.
+  Future<ProductFamily> renameFamily({
+    required ProductFamily family,
+    required String newName,
+    required String newCategory,
+  }) async {
+    final updated = family.copyWith(
+      name: newName.trim(),
+      category: newCategory.trim(),
+      updatedAt: DateTime.now(),
+    );
+    await _database.updateProductFamily(updated);
+    if (family.id != null) {
+      await _database.renameProductsByFamily(family.id!, name: updated.name, category: updated.category);
+    }
+    return updated;
+  }
+
   Future<void> deleteFamily(ProductFamily family) async {
     await _database.deleteProductFamily(family.id!);
     await ProductImagePicker.deleteImage(family.imagePath);
