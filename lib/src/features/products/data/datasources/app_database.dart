@@ -349,6 +349,27 @@ class AppDatabase {
     return family;
   }
 
+  /// يُحدّث اسم وتصنيف كل المنتجات المرتبطة بعائلة معيّنة، ليُطابق
+  /// الاسم الجديد بعد تعديل التاجر لاسم منتج مقترح. تسمية الحجم
+  /// الخاصة بكل منتج (variant_label) تبقى كما هي دون تغيير.
+  Future<void> renameProductsByFamily(int familyId, {required String name, required String category}) async {
+    final db = await database;
+    final rows = await db.query(productsTable, where: 'family_id = ?', whereArgs: [familyId]);
+    final batch = db.batch();
+    for (final row in rows) {
+      final product = Product.fromMap(row);
+      final updatedProduct = product.copyWith(name: name, category: category, updatedAt: DateTime.now());
+      final searchTerms = buildSearchTerms(updatedProduct);
+      batch.update(
+        productsTable,
+        {'name': name, 'category': category, 'search_terms': searchTerms, 'updated_at': updatedProduct.updatedAt.toIso8601String()},
+        where: 'id = ?',
+        whereArgs: [product.id],
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
   Future<void> deleteProductFamily(int familyId) async {
     final db = await database;
     await db.transaction((txn) async {
