@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../data/moroccan_grocery_presets.dart' show MeasurementUnit;
 import '../../domain/models/product_family.dart';
 
 class VariantSizeEntry {
