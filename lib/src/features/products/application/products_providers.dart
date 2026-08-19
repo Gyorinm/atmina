@@ -85,6 +85,32 @@ class ProductFamiliesController extends AsyncNotifier<List<ProductFamily>> {
     state = AsyncData(updated);
   }
 
+  /// يعيد تسمية عائلة منتج، ويُحدّث المنتجات المرتبطة بها محليًا،
+  /// ثم يعيد نشر الكتالوج على الخادم تلقائيًا كي يرى الزبائن الاسم
+  /// الجديد فورًا (إن كان للتاجر منتجات منشورة بالفعل).
+  Future<ProductFamily> renameFamily({
+    required ProductFamily family,
+    required String newName,
+    required String newCategory,
+  }) async {
+    final repository = ref.read(productFamiliesRepositoryProvider);
+    final updatedFamily = await repository.renameFamily(
+      family: family,
+      newName: newName,
+      newCategory: newCategory,
+    );
+
+    final current = state.valueOrNull ?? await build();
+    final updated = current.map((f) => f.id == updatedFamily.id ? updatedFamily : f).toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+    state = AsyncData(updated);
+
+    // يُحدّث قائمة المنتجات في الذاكرة وينشر الكتالوج من جديد تلقائيًا.
+    await ref.read(productsControllerProvider.notifier).refresh();
+
+    return updatedFamily;
+  }
+
   /// يرفع صورة عائلة منتج محلية إلى الخادم لتصبح مرئية للزبائن.
   /// يتطلب أن يملك المنتج معرّفًا (id) وصورة محلية محفوظة مسبقًا.
   Future<void> uploadImageToServer({
