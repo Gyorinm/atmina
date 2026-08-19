@@ -7,33 +7,35 @@ import '../../domain/models/product_family.dart';
 class VariantSizeEntry {
   const VariantSizeEntry({required this.sizeLabel, required this.price, required this.stockQuantity});
 
-  /// نص الحجم كما كتبه التاجر بنفسه (مثال: "1"، "2.5") متبوعًا
-  /// بوحدة القياس تلقائيًا عند العرض.
+  /// تسمية الحجم كاملة كما ستظهر للزبون (مثال: "1 لتر"، "صغير"،
+  /// "عبوة كبيرة"). حرة تمامًا، يكتبها التاجر بنفسه أو يختارها من
+  /// الاقتراحات السريعة.
   final String sizeLabel;
   final double price;
   final int stockQuantity;
 }
 
 class _SizeRow {
-  _SizeRow()
-      : sizeController = TextEditingController(),
+  _SizeRow({String initialLabel = ''})
+      : labelController = TextEditingController(text: initialLabel),
         priceController = TextEditingController(),
         stockController = TextEditingController(text: '1');
 
-  final TextEditingController sizeController;
+  final TextEditingController labelController;
   final TextEditingController priceController;
   final TextEditingController stockController;
 
   void dispose() {
-    sizeController.dispose();
+    labelController.dispose();
     priceController.dispose();
     stockController.dispose();
   }
 }
 
-/// نافذة تسمح للتاجر بإضافة الأحجام المتوفرة عنده فعليًا لمنتج قابل
-/// للقياس (سائل باللتر أو مادة بالكيلوغرام)، بالضغط على زر "+" لكل
-/// حجم يكتبه بنفسه (1، 2، 1.5...)، مع السعر والكمية لكل حجم.
+/// نافذة موحّدة تسمح للتاجر بإضافة كل الأحجام/الأنواع المتوفرة عنده
+/// فعليًا لمنتج واحد (مثال: سيدي علي بأحجام صغير/متوسط/كبير وأيضًا
+/// 1 لتر/2 لتر معًا في نفس الوقت) — دون إجباره على نوع واحد فقط.
+/// كل صف يمثّل خيارًا واحدًا سيراه الزبون ليختار من بينها.
 class VariantSizePickerSheet extends StatefulWidget {
   const VariantSizePickerSheet({super.key, required this.family});
 
@@ -56,7 +58,17 @@ class _VariantSizePickerSheetState extends State<VariantSizePickerSheet> {
   final _formKey = GlobalKey<FormState>();
   final List<_SizeRow> _rows = [];
 
-  String get _unitLabel => widget.family.measurementUnit.unitLabel;
+  /// اقتراحات سريعة مختلطة: كلمات وصفية دائمًا + أرقام بالوحدة
+  /// المناسبة إن كان المنتج قابلًا للقياس. الضغط على أي اقتراح
+  /// يضيف صفًا جديدًا مباشرة بهذه التسمية.
+  List<String> get _quickSuggestions {
+    final unit = widget.family.measurementUnit.unitLabel;
+    final suggestions = <String>['صغير', 'متوسط', 'كبير'];
+    if (unit.isNotEmpty) {
+      suggestions.addAll(['1 $unit', '2 $unit', '5 $unit', '10 $unit']);
+    }
+    return suggestions;
+  }
 
   @override
   void initState() {
@@ -72,8 +84,16 @@ class _VariantSizePickerSheetState extends State<VariantSizePickerSheet> {
     super.dispose();
   }
 
-  void _addRow() {
-    setState(() => _rows.add(_SizeRow()));
+  void _addRow({String initialLabel = ''}) {
+    setState(() {
+      // إذا كان هناك صف فارغ تمامًا (لم يُملأ بعد)، نستخدمه بدل إضافة صف جديد فوقه.
+      final emptyIndex = _rows.indexWhere((r) => r.labelController.text.trim().isEmpty);
+      if (initialLabel.isNotEmpty && emptyIndex != -1) {
+        _rows[emptyIndex].labelController.text = initialLabel;
+      } else {
+        _rows.add(_SizeRow(initialLabel: initialLabel));
+      }
+    });
   }
 
   void _removeRow(int index) {
@@ -86,7 +106,7 @@ class _VariantSizePickerSheetState extends State<VariantSizePickerSheet> {
   void _confirm() {
     if (_rows.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('أضف حجمًا واحدًا على الأقل بالضغط على "+".')),
+        const SnackBar(content: Text('أضف خيارًا واحدًا على الأقل.')),
       );
       return;
     }
@@ -95,7 +115,7 @@ class _VariantSizePickerSheetState extends State<VariantSizePickerSheet> {
     final entries = _rows
         .map(
           (row) => VariantSizeEntry(
-            sizeLabel: _formatSize(row.sizeController.text.trim()),
+            sizeLabel: row.labelController.text.trim(),
             price: double.parse(row.priceController.text.replaceAll(',', '.').trim()),
             stockQuantity: int.parse(row.stockController.text.trim()),
           ),
@@ -105,22 +125,13 @@ class _VariantSizePickerSheetState extends State<VariantSizePickerSheet> {
     Navigator.of(context).pop(entries);
   }
 
-  String _formatSize(String raw) {
-    final normalized = raw.replaceAll(',', '.');
-    final value = double.tryParse(normalized);
-    if (value == null) return raw;
-    // يحذف الأصفار الزائدة بعد الفاصلة (2.0 -> 2، 1.50 -> 1.5).
-    final text = value == value.roundToDouble() ? value.toInt().toString() : value.toString();
-    return text;
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.85,
-      minChildSize: 0.5,
+      initialChildSize: 0.9,
+      minChildSize: 0.55,
       maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollController) {
@@ -143,18 +154,38 @@ class _VariantSizePickerSheetState extends State<VariantSizePickerSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'الأحجام المتوفرة عندك — ${widget.family.name}',
+                      'الأنواع/الأحجام المتوفرة — ${widget.family.name}',
                       style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'اضغط "+" وزيد كل حجم ($_unitLabel) كاين عندك، وحط الثمن والكمية ديالو.',
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    const Text(
+                      'يمكنك خلط أنواع مختلفة لنفس المنتج (صغير، كبير، 1 لتر، 2 لتر...) — كلها ستظهر للزبون كخيارات لنفس المنتج.',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _quickSuggestions.map((label) {
+                    return ActionChip(
+                      label: Text(label),
+                      onPressed: () => _addRow(initialLabel: label),
+                      backgroundColor: AppColors.canvas,
+                      labelStyle: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: const BorderSide(color: AppColors.border),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 10),
               const Divider(height: 1, color: AppColors.border),
               Expanded(
                 child: Form(
@@ -175,34 +206,31 @@ class _VariantSizePickerSheetState extends State<VariantSizePickerSheet> {
                         ),
                         child: Row(
                           children: [
-                            SizedBox(
-                              width: 70,
+                            Expanded(
+                              flex: 3,
                               child: TextFormField(
-                                controller: row.sizeController,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                                decoration: InputDecoration(
+                                controller: row.labelController,
+                                decoration: const InputDecoration(
                                   isDense: true,
-                                  labelText: _unitLabel,
+                                  labelText: 'الاسم/الحجم',
+                                  hintText: 'مثال: كبير، 1 لتر',
                                   filled: true,
                                   fillColor: Colors.white,
-                                  border: const OutlineInputBorder(),
+                                  border: OutlineInputBorder(),
                                 ),
-                                validator: (v) {
-                                  final n = double.tryParse((v ?? '').replaceAll(',', '.').trim());
-                                  return n == null || n <= 0 ? 'مطلوب' : null;
-                                },
+                                validator: (v) => v == null || v.trim().isEmpty ? 'مطلوب' : null,
                               ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
+                              flex: 2,
                               child: TextFormField(
                                 controller: row.priceController,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
                                 decoration: const InputDecoration(
                                   isDense: true,
-                                  labelText: 'السعر (MAD)',
+                                  labelText: 'السعر',
                                   filled: true,
                                   fillColor: Colors.white,
                                   border: OutlineInputBorder(),
@@ -215,7 +243,7 @@ class _VariantSizePickerSheetState extends State<VariantSizePickerSheet> {
                             ),
                             const SizedBox(width: 8),
                             SizedBox(
-                              width: 80,
+                              width: 70,
                               child: TextFormField(
                                 controller: row.stockController,
                                 keyboardType: TextInputType.number,
@@ -247,9 +275,9 @@ class _VariantSizePickerSheetState extends State<VariantSizePickerSheet> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                 child: OutlinedButton.icon(
-                  onPressed: _addRow,
+                  onPressed: () => _addRow(),
                   icon: const Icon(Icons.add_rounded),
-                  label: const Text('زيد حجم آخر'),
+                  label: const Text('زيد خيار آخر'),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(46),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -263,7 +291,7 @@ class _VariantSizePickerSheetState extends State<VariantSizePickerSheet> {
                 child: FilledButton.icon(
                   onPressed: _confirm,
                   icon: const Icon(Icons.save_outlined),
-                  label: Text('حفظ ${_rows.length} ${_rows.length == 1 ? "حجم" : "أحجام"} كمنتجات'),
+                  label: Text('حفظ ${_rows.length} ${_rows.length == 1 ? "خيار" : "خيارات"} كمنتجات'),
                   style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
                 ),
               ),
