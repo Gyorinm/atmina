@@ -8,6 +8,7 @@ import '../../domain/models/product.dart';
 import '../widgets/add_product_dialog.dart';
 import '../widgets/product_card.dart';
 import '../widgets/product_card_skeleton.dart';
+import '../widgets/product_group_card.dart';
 import '../widgets/search_input.dart';
 import '../widgets/update_stock_dialog.dart';
 
@@ -113,41 +114,83 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                   ),
                 ),
-                data: (products) => SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                  sliver: products.isEmpty
-                      ? SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: _EmptyState(
-                            onClearSearch: () {
-                              _searchController.clear();
-                              ref.read(productSearchQueryProvider.notifier).state = '';
-                            },
+                data: (products) {
+                  final groups = _groupProducts(products);
+                  return SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                    sliver: products.isEmpty
+                        ? SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: _EmptyState(
+                              onClearSearch: () {
+                                _searchController.clear();
+                                ref.read(productSearchQueryProvider.notifier).state = '';
+                              },
+                            ),
+                          )
+                        : SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final group = groups[index];
+                                // منتج له أكثر من حجم/متغيّر: بطاقة واحدة موحّدة
+                                // (بنفس شكل ظهورها للزبون) بدل تكرار المنتج عدة
+                                // مرات، مع بقاء صلاحيات تعديل الكمية والسعر والحذف.
+                                if (group.length > 1) {
+                                  final familyId = group.first.familyId;
+                                  final family = familyId != null ? familiesById[familyId] : null;
+                                  return ProductGroupCard(
+                                    products: group,
+                                    family: family,
+                                    onAdd: (product) => _addProduct(context, product),
+                                    onUpdateStock: (product) => _updateStock(context, product),
+                                    onDelete: (product) => _deleteProduct(context, product),
+                                  );
+                                }
+                                final product = group.first;
+                                final family = product.familyId != null ? familiesById[product.familyId] : null;
+                                return ProductCard(
+                                  product: product,
+                                  familyImagePath: family?.imagePath,
+                                  onAdd: () => _addProduct(context, product),
+                                  onUpdateStock: () => _updateStock(context, product),
+                                  onDelete: () => _deleteProduct(context, product),
+                                );
+                              },
+                              childCount: groups.length,
+                            ),
                           ),
-                        )
-                      : SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final product = products[index];
-                              final family = product.familyId != null ? familiesById[product.familyId] : null;
-                              return ProductCard(
-                                product: product,
-                                familyImagePath: family?.imagePath,
-                                onAdd: () => _addProduct(context, product),
-                                onUpdateStock: () => _updateStock(context, product),
-                                onDelete: () => _deleteProduct(context, product),
-                              );
-                            },
-                            childCount: products.length,
-                          ),
-                        ),
-                ),
+                  );
+                },
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// يجمع المنتجات حسب عائلتها: كل عائلة تحمل أكثر من حجم/متغيّر واحد
+  /// تظهر كبطاقة واحدة موحّدة، وباقي المنتجات (بلا عائلة أو بعائلة ذات
+  /// حجم واحد فقط) تظهر كل واحد في بطاقته المستقلة كما كانت. نفس منطق
+  /// التجميع المعتمد في كتالوج الزبون، حتى يتطابق الشكلان.
+  List<List<Product>> _groupProducts(List<Product> products) {
+    final Map<int, List<Product>> byFamily = {};
+    final List<List<Product>> ordered = [];
+
+    for (final product in products) {
+      if (product.familyId == null) {
+        ordered.add([product]);
+        continue;
+      }
+      final group = byFamily.putIfAbsent(product.familyId!, () {
+        final newGroup = <Product>[];
+        ordered.add(newGroup);
+        return newGroup;
+      });
+      group.add(product);
+    }
+
+    return ordered;
   }
 
   Future<void> _openAddProductDialog(List<String> categories) async {
