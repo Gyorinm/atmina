@@ -31,7 +31,6 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
   late final TextEditingController _stockController;
   bool _isSaving = false;
 
-  ProductFamily? _selectedFamily;
   String? _ownImagePath;
   bool _isPickingImage = false;
 
@@ -55,22 +54,14 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
     super.dispose();
   }
 
+  /// عند اختيار منتج من القائمة الجاهزة، تُفتح دائمًا نافذة اختيار
+  /// الأنواع/الأحجام الموحّدة — بحيث يمكن للتاجر إضافة عدة خيارات
+  /// مختلطة (صغير/متوسط/كبير مع 1 لتر/2 لتر مثلًا) لنفس المنتج دفعة
+  /// واحدة، وكلها تظهر للزبون كخيارات لنفس المنتج لا كمنتجات منفصلة.
   Future<void> _pickFromPresetList() async {
     final ProductFamily? picked = await PresetProductPickerSheet.show(context);
-    if (picked == null) return;
-
-    // إذا كان المنتج قابلًا للقياس (سائل باللتر أو مادة بالكيلو)،
-    // نفتح مباشرة نافذة اختيار الأحجام المتوفرة بدل الحقل اليدوي.
-    if (picked.isMeasurable) {
-      await _openVariantSizePicker(picked);
-      return;
-    }
-
-    setState(() {
-      _selectedFamily = picked;
-      _nameController.text = picked.name;
-      _categoryController.text = picked.category;
-    });
+    if (picked == null || !mounted) return;
+    await _openVariantSizePicker(picked);
   }
 
   Future<void> _openVariantSizePicker(ProductFamily family) async {
@@ -87,8 +78,8 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
               price: entry.price,
               stockQuantity: entry.stockQuantity,
               familyId: family.id,
-              variantLabel: '${entry.sizeLabel} ${family.measurementUnit.unitLabel}',
-              // لا حاجة لصورة خاصة بكل حجم؛ الصورة تُستنتج تلقائيًا
+              variantLabel: entry.sizeLabel,
+              // لا حاجة لصورة خاصة بكل خيار؛ الصورة تُستنتج تلقائيًا
               // من العائلة عبر familyId في كل مكان بالتطبيق.
             ),
           )
@@ -103,10 +94,6 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
-  }
-
-  void _clearFamilySelection() {
-    setState(() => _selectedFamily = null);
   }
 
   Future<void> _pickOwnImage(bool fromCamera) async {
@@ -160,7 +147,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
                 OutlinedButton.icon(
                   onPressed: _isSaving ? null : _pickFromPresetList,
                   icon: const Icon(Icons.storefront_rounded),
-                  label: Text(_selectedFamily == null ? 'اختيار من قائمة المنتجات' : 'تغيير المنتج المختار'),
+                  label: const Text('اختيار من قائمة المنتجات'),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -168,32 +155,19 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
                     foregroundColor: AppColors.navy,
                   ),
                 ),
-                if (_selectedFamily != null) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.link_rounded, size: 16, color: AppColors.textMuted),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'مرتبط بمنتج: ${_selectedFamily!.name}',
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _clearFamilySelection,
-                        child: const Text('إلغاء الربط', style: TextStyle(fontSize: 12)),
-                      ),
-                    ],
-                  ),
-                ],
+                const SizedBox(height: 4),
+                Text(
+                  'اختيار منتج من القائمة يفتح لك مباشرة إضافة كل أنواعه وأحجامه دفعة واحدة.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 14),
                 Row(
                   children: [
                     const Expanded(child: Divider(color: AppColors.border)),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text('أو أدخل يدويًا', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                      child: Text('أو أدخل منتجًا يدويًا (مرة واحدة)', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                     ),
                     const Expanded(child: Divider(color: AppColors.border)),
                   ],
@@ -234,7 +208,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    'اضغط على كلمة جاهزة، أو اكتب الحجم كما تريد بنفسك.',
+                    'هذا المسار لمنتج واحد بلا صورة عائلة. لإضافة عدة أحجام لنفس المنتج مع صورة مشتركة، استخدم "اختيار من قائمة المنتجات" أعلاه.',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
                 ),
@@ -268,13 +242,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
     );
   }
 
-  /// يعرض صورة العائلة تلقائيًا إن وُجدت (بدون حاجة لالتقاط صورة جديدة)،
-  /// وإلا يسمح بالتقاط/اختيار صورة خاصة بهذا المنتج تحديدًا.
   Widget _buildImageArea() {
-    final familyImagePath = _selectedFamily?.imagePath;
-    final effectiveImagePath = familyImagePath ?? _ownImagePath;
-    final isInheritedFromFamily = familyImagePath != null;
-
     return Column(
       children: [
         Container(
@@ -284,63 +252,55 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
             color: AppColors.canvas,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: AppColors.border),
-            image: effectiveImagePath != null
-                ? DecorationImage(image: FileImage(File(effectiveImagePath)), fit: BoxFit.cover)
+            image: _ownImagePath != null
+                ? DecorationImage(image: FileImage(File(_ownImagePath!)), fit: BoxFit.cover)
                 : null,
           ),
           child: _isPickingImage
               ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-              : effectiveImagePath == null
+              : _ownImagePath == null
                   ? const Icon(Icons.image_outlined, color: AppColors.textMuted, size: 34)
                   : null,
         ),
         const SizedBox(height: 10),
-        if (isInheritedFromFamily)
-          Text(
-            'الصورة موروثة تلقائيًا من "${_selectedFamily!.name}"',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-            textAlign: TextAlign.center,
-          )
-        else ...[
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: _isPickingImage ? null : () => _pickOwnImage(true),
-                icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                label: const Text('التقاط صورة'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.navy,
-                  side: const BorderSide(color: AppColors.border),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              onPressed: _isPickingImage ? null : () => _pickOwnImage(true),
+              icon: const Icon(Icons.camera_alt_outlined, size: 18),
+              label: const Text('التقاط صورة'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.navy,
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              OutlinedButton.icon(
-                onPressed: _isPickingImage ? null : () => _pickOwnImage(false),
-                icon: const Icon(Icons.photo_library_outlined, size: 18),
-                label: const Text('من المعرض'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.navy,
-                  side: const BorderSide(color: AppColors.border),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
+            ),
+            OutlinedButton.icon(
+              onPressed: _isPickingImage ? null : () => _pickOwnImage(false),
+              icon: const Icon(Icons.photo_library_outlined, size: 18),
+              label: const Text('من المعرض'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.navy,
+                side: const BorderSide(color: AppColors.border),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              if (_ownImagePath != null)
-                TextButton.icon(
-                  onPressed: _isPickingImage ? null : _removeOwnImage,
-                  icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.danger),
-                  label: const Text('إزالة', style: TextStyle(color: AppColors.danger)),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'صورة اختيارية، تُضغط تلقائيًا لتصغير حجمها.',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
-          ),
-        ],
+            ),
+            if (_ownImagePath != null)
+              TextButton.icon(
+                onPressed: _isPickingImage ? null : _removeOwnImage,
+                icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.danger),
+                label: const Text('إزالة', style: TextStyle(color: AppColors.danger)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'صورة اختيارية لهذا المنتج اليدوي، تُضغط تلقائيًا لتصغير حجمها.',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+        ),
       ],
     );
   }
@@ -382,18 +342,13 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
     try {
       final variant = _variantController.text.trim();
 
-      // إذا كان مرتبطًا بعائلة تملك صورة، لا نحفظ صورة خاصة بالمنتج
-      // (نعتمد على صورة العائلة تلقائيًا فتتوفر مساحة تخزين).
-      final imagePathToSave = _selectedFamily?.imagePath != null ? null : _ownImagePath;
-
       final product = await ref.read(productsControllerProvider.notifier).addProduct(
         CreateProductInput(
           name: _nameController.text.trim(),
           category: _categoryController.text.trim(),
           price: _parseDouble(_priceController.text.trim())!,
           stockQuantity: int.parse(_stockController.text.trim()),
-          imagePath: imagePathToSave,
-          familyId: _selectedFamily?.id,
+          imagePath: _ownImagePath,
           variantLabel: variant.isEmpty ? null : variant,
         ),
       );
