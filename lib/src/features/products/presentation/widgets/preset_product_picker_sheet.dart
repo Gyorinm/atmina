@@ -155,6 +155,31 @@ class _PresetProductPickerSheetState extends ConsumerState<PresetProductPickerSh
     }
   }
 
+  Future<void> _openRenameDialog(ProductFamily family) async {
+    final result = await showDialog<_RenameResult>(
+      context: context,
+      builder: (context) => _RenameFamilyDialog(family: family),
+    );
+    if (result == null) return;
+
+    try {
+      await ref.read(productFamiliesControllerProvider.notifier).renameFamily(
+            family: family,
+            newName: result.name,
+            newCategory: result.category,
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تعديل الاسم، وسيصل التحديث للزبائن مع النشر التالي.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تعذر حفظ التعديل: $error')));
+      }
+    }
+  }
+
   Future<void> _openAddFamilyDialog() async {
     final result = await showDialog<_NewFamilyResult>(
       context: context,
@@ -359,7 +384,17 @@ class _PresetProductPickerSheetState extends ConsumerState<PresetProductPickerSh
                               color: family.isExportedToServer ? AppColors.success : AppColors.textMuted,
                             ),
                           ),
-                          trailing: const Icon(Icons.chevron_left_rounded, color: AppColors.navy),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: () => _openRenameDialog(family),
+                                icon: const Icon(Icons.edit_outlined, color: AppColors.textMuted, size: 20),
+                                tooltip: 'تعديل الاسم',
+                              ),
+                              const Icon(Icons.chevron_left_rounded, color: AppColors.navy),
+                            ],
+                          ),
                           onTap: () => Navigator.of(context).pop(family),
                         );
                       },
@@ -505,6 +540,89 @@ class _AddFamilyDialogState extends State<_AddFamilyDialog> {
             );
           },
           child: const Text('إضافة'),
+        ),
+      ],
+    );
+  }
+}
+
+class _RenameResult {
+  const _RenameResult({required this.name, required this.category});
+
+  final String name;
+  final String category;
+}
+
+class _RenameFamilyDialog extends StatefulWidget {
+  const _RenameFamilyDialog({required this.family});
+
+  final ProductFamily family;
+
+  @override
+  State<_RenameFamilyDialog> createState() => _RenameFamilyDialogState();
+}
+
+class _RenameFamilyDialogState extends State<_RenameFamilyDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _categoryController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.family.name);
+    _categoryController = TextEditingController(text: widget.family.category);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _categoryController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: const Text('تعديل اسم المنتج'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'اسم المنتج'),
+              validator: (v) => v == null || v.trim().isEmpty ? 'أدخل اسم المنتج.' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _categoryController,
+              decoration: const InputDecoration(labelText: 'التصنيف'),
+              validator: (v) => v == null || v.trim().isEmpty ? 'أدخل التصنيف.' : null,
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'التعديل سينطبق على كل المنتجات المرتبطة بهذا الاسم، وسيصل تلقائيًا للزبائن مع النشر التالي.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('إلغاء')),
+        FilledButton(
+          onPressed: () {
+            if (!_formKey.currentState!.validate()) return;
+            Navigator.of(context).pop(
+              _RenameResult(name: _nameController.text.trim(), category: _categoryController.text.trim()),
+            );
+          },
+          child: const Text('حفظ'),
         ),
       ],
     );
