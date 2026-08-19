@@ -227,9 +227,13 @@ class ProductsController extends AsyncNotifier<List<Product>> {
     return newProducts;
   }
 
-  Future<Product> updateStock(Product product, int stockQuantity) async {
+  Future<Product> updateStock(
+    Product product,
+    int stockQuantity, {
+    double? price,
+  }) async {
     final repository = ref.read(productsRepositoryProvider);
-    final updatedProduct = await repository.updateStock(product, stockQuantity);
+    final updatedProduct = await repository.updateStock(product, stockQuantity, price: price);
 
     final currentItems = state.valueOrNull ?? await build();
     final updatedItems = currentItems
