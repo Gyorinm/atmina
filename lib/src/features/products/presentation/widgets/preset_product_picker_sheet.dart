@@ -7,7 +7,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../application/product_image_picker.dart';
 import '../../application/products_providers.dart';
 import '../../domain/models/product_family.dart';
-import '../../data/moroccan_grocery_presets.dart' show moroccanGroceryCategories;
+import '../../data/moroccan_grocery_presets.dart' show moroccanGroceryCategories, MeasurementUnit;
 import '../../../store/application/store_profile_controller.dart';
 
 enum _ImageMenuAction { camera, gallery, remove, uploadToServer }
@@ -170,6 +170,7 @@ class _PresetProductPickerSheetState extends ConsumerState<PresetProductPickerSh
           name: result.name,
           category: result.category,
           imagePath: imagePath,
+          measurementUnit: result.measurementUnit,
         );
   }
 
@@ -335,7 +336,21 @@ class _PresetProductPickerSheetState extends ConsumerState<PresetProductPickerSh
                               ],
                             ),
                           ),
-                          title: Text(family.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          title: Row(
+                            children: [
+                              Flexible(child: Text(family.name, style: const TextStyle(fontWeight: FontWeight.w600))),
+                              if (family.isMeasurable) ...[
+                                const SizedBox(width: 6),
+                                Icon(
+                                  family.measurementUnit == MeasurementUnit.liter
+                                      ? Icons.water_drop_outlined
+                                      : Icons.scale_outlined,
+                                  size: 14,
+                                  color: AppColors.navy,
+                                ),
+                              ],
+                            ],
+                          ),
                           subtitle: Text(
                             family.isExportedToServer
                                 ? '${family.category} · مُصدَّرة للخادم ✓'
@@ -391,11 +406,17 @@ class _PresetProductPickerSheetState extends ConsumerState<PresetProductPickerSh
 }
 
 class _NewFamilyResult {
-  const _NewFamilyResult({required this.name, required this.category, required this.attachImage});
+  const _NewFamilyResult({
+    required this.name,
+    required this.category,
+    required this.attachImage,
+    required this.measurementUnit,
+  });
 
   final String name;
   final String category;
   final bool attachImage;
+  final MeasurementUnit measurementUnit;
 }
 
 class _AddFamilyDialog extends StatefulWidget {
@@ -410,6 +431,7 @@ class _AddFamilyDialogState extends State<_AddFamilyDialog> {
   final _nameController = TextEditingController();
   final _categoryController = TextEditingController();
   bool _attachImageNow = false;
+  MeasurementUnit _measurementUnit = MeasurementUnit.none;
 
   @override
   void dispose() {
@@ -439,6 +461,24 @@ class _AddFamilyDialogState extends State<_AddFamilyDialog> {
               decoration: const InputDecoration(labelText: 'التصنيف'),
               validator: (v) => v == null || v.trim().isEmpty ? 'أدخل التصنيف.' : null,
             ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'شكون كيتقاس هاد المنتج؟',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 6),
+            SegmentedButton<MeasurementUnit>(
+              segments: const [
+                ButtonSegment(value: MeasurementUnit.none, label: Text('بدون'), icon: Icon(Icons.inventory_2_outlined, size: 16)),
+                ButtonSegment(value: MeasurementUnit.liter, label: Text('سائل (لتر)'), icon: Icon(Icons.water_drop_outlined, size: 16)),
+                ButtonSegment(value: MeasurementUnit.kg, label: Text('وزن (كغ)'), icon: Icon(Icons.scale_outlined, size: 16)),
+              ],
+              selected: {_measurementUnit},
+              onSelectionChanged: (selection) => setState(() => _measurementUnit = selection.first),
+            ),
             const SizedBox(height: 8),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
@@ -460,6 +500,7 @@ class _AddFamilyDialogState extends State<_AddFamilyDialog> {
                 name: _nameController.text.trim(),
                 category: _categoryController.text.trim(),
                 attachImage: _attachImageNow,
+                measurementUnit: _measurementUnit,
               ),
             );
           },
