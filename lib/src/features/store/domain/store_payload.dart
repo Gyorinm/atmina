@@ -40,6 +40,7 @@ class StorePayloadItem {
     required this.price,
     required this.stockQuantity,
     this.familyId,
+    this.variantLabel,
   });
 
   final String internalCode;
@@ -52,6 +53,10 @@ class StorePayloadItem {
   /// صورة المنتج المخزَّنة على الخادم (/store/{code}/images/{familyId}).
   final int? familyId;
 
+  /// تسمية الحجم/الوزن (مثال: "1 لتر") — تُستخدم عند الزبون لتمييز
+  /// عدة أحجام لنفس المنتج دون تكرار الاسم أو الصورة.
+  final String? variantLabel;
+
   Map<String, dynamic> toMap() => {
         'internal_code': internalCode,
         'name': name,
@@ -59,6 +64,7 @@ class StorePayloadItem {
         'price': price,
         'stock_quantity': stockQuantity,
         if (familyId != null) 'family_id': familyId,
+        if (variantLabel != null) 'variant_label': variantLabel,
       };
 
   factory StorePayloadItem.fromMap(Map<String, dynamic> map) => StorePayloadItem(
@@ -68,5 +74,6 @@ class StorePayloadItem {
         price: (map['price'] as num).toDouble(),
         stockQuantity: (map['stock_quantity'] as num?)?.toInt() ?? 0,
         familyId: (map['family_id'] as num?)?.toInt(),
+        variantLabel: map['variant_label'] as String?,
       );
 }
