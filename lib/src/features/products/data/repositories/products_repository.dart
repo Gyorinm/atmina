@@ -65,16 +65,24 @@ class ProductsRepository {
     return results;
   }
 
-  Future<Product> updateStock(Product product, int stockQuantity) async {
+  /// يحدّث كمية المخزون، ويحدّث السعر أيضًا إذا مُرِّر [price] (يبقى
+  /// السعر كما هو إن تُرك null)، حتى يتمكن التاجر من تعديل الاثنين معًا
+  /// من نفس النافذة.
+  Future<Product> updateStock(
+    Product product,
+    int stockQuantity, {
+    double? price,
+  }) async {
     final updatedProduct = product.copyWith(
       stockQuantity: stockQuantity,
+      price: price,
       updatedAt: DateTime.now(),
     );
 
     try {
       return await _database.updateProduct(updatedProduct);
     } on DatabaseException {
-      throw const ProductSaveException('تعذر تحديث كمية المخزون محليًا.');
+      throw const ProductSaveException('تعذر تحديث المنتج محليًا.');
     }
   }
 
