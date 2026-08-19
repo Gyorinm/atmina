@@ -21,6 +21,7 @@ class UpdateStockDialog extends ConsumerStatefulWidget {
 class _UpdateStockDialogState extends ConsumerState<UpdateStockDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _stockController;
+  late final TextEditingController _priceController;
   bool _isSaving = false;
 
   @override
@@ -29,11 +30,15 @@ class _UpdateStockDialogState extends ConsumerState<UpdateStockDialog> {
     _stockController = TextEditingController(
       text: '${widget.product.stockQuantity}',
     );
+    _priceController = TextEditingController(
+      text: _formatPrice(widget.product.price),
+    );
   }
 
   @override
   void dispose() {
     _stockController.dispose();
+    _priceController.dispose();
     super.dispose();
   }
 
@@ -42,7 +47,7 @@ class _UpdateStockDialogState extends ConsumerState<UpdateStockDialog> {
     return AlertDialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      title: const Text('تحديث المخزون'),
+      title: const Text('تحديث الكمية والسعر'),
       content: SizedBox(
         width: 420,
         child: Form(
@@ -52,7 +57,7 @@ class _UpdateStockDialogState extends ConsumerState<UpdateStockDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.product.name,
+                widget.product.displayName,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
@@ -93,6 +98,39 @@ class _UpdateStockDialogState extends ConsumerState<UpdateStockDialog> {
                   ),
                 ),
               ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _priceController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
+                validator: (value) {
+                  final parsed = double.tryParse((value ?? '').trim());
+                  if (parsed == null || parsed <= 0) {
+                    return 'أدخل سعرًا صحيحًا أكبر من صفر.';
+                  }
+                  return null;
+                },
+                decoration: InputDecoration(
+                  labelText: 'السعر',
+                  helperText: 'حدّث السعر هنا إذا ارتفعت تكلفة المنتج.',
+                  filled: true,
+                  fillColor: AppColors.canvas,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: const BorderSide(color: AppColors.navy),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -111,7 +149,7 @@ class _UpdateStockDialogState extends ConsumerState<UpdateStockDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.inventory_2_outlined),
-          label: Text(_isSaving ? 'جارٍ الحفظ...' : 'حفظ الكمية'),
+          label: Text(_isSaving ? 'جارٍ الحفظ...' : 'حفظ'),
         ),
       ],
     );
@@ -132,6 +170,7 @@ class _UpdateStockDialogState extends ConsumerState<UpdateStockDialog> {
           .updateStock(
             widget.product,
             int.parse(_stockController.text.trim()),
+            price: double.parse(_priceController.text.trim()),
           );
 
       if (!mounted) {
@@ -154,5 +193,12 @@ class _UpdateStockDialogState extends ConsumerState<UpdateStockDialog> {
         });
       }
     }
+  }
+
+  static String _formatPrice(double price) {
+    if (price == price.roundToDouble()) {
+      return price.toStringAsFixed(0);
+    }
+    return price.toStringAsFixed(2);
   }
 }
