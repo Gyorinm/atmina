@@ -39,6 +39,7 @@ class StoreService {
                 price: p.price,
                 stockQuantity: p.stockQuantity,
                 familyId: p.familyId,
+                variantLabel: p.variantLabel,
               ))
           .toList(growable: false),
     );
