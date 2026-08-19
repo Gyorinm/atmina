@@ -6,6 +6,7 @@ class CreateProductInput {
     required this.stockQuantity,
     this.imagePath,
     this.familyId,
+    this.variantLabel,
   });
 
   final String name;
@@ -19,4 +20,7 @@ class CreateProductInput {
 
   /// عائلة المنتج التي ينتمي إليها هذا الحجم/النوع (اختياري).
   final int? familyId;
+
+  /// تسمية الحجم/الوزن (مثال: "1 لتر"، "5 كغ") منفصلة عن الاسم.
+  final String? variantLabel;
 }
