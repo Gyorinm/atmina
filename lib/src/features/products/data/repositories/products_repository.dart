@@ -35,12 +35,14 @@ class ProductsRepository {
           searchTerms: '',
           createdAt: now,
           updatedAt: now,
+          variantLabel: input.variantLabel,
         ),
       ),
       createdAt: now,
       updatedAt: now,
       imagePath: input.imagePath,
       familyId: input.familyId,
+      variantLabel: input.variantLabel,
     );
 
     try {
@@ -51,6 +53,16 @@ class ProductsRepository {
       }
       throw const ProductSaveException('تعذر حفظ المنتج محليًا.');
     }
+  }
+
+  /// يضيف عدة منتجات دفعة واحدة (مثال: عدة أحجام لنفس المنتج تم
+  /// اختيارها معًا). يعيد قائمة المنتجات المُنشأة بنفس الترتيب.
+  Future<List<Product>> addProductsBatch(List<CreateProductInput> inputs) async {
+    final results = <Product>[];
+    for (final input in inputs) {
+      results.add(await addProduct(input));
+    }
+    return results;
   }
 
   Future<Product> updateStock(Product product, int stockQuantity) async {
