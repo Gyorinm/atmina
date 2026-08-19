@@ -66,21 +66,57 @@ class _AtminaAppState extends State<AtminaApp> {
   }
 
   void _navigateToLink(Uri uri) {
+    final navContext = _navigatorKey.currentContext;
+    if (navContext == null) return;
+    final container = ProviderScope.containerOf(navContext, listen: false);
     if (uri.host == 'order') {
-      try {
-        final payload = OrderPayload.decode(uri.pathSegments.first);
-        _navigatorKey.currentState!.push(
-          MaterialPageRoute<void>(builder: (_) => OrderLinkScreen(payload: payload)),
-        );
-      } catch (_) {
-        // Ignore malformed order links.
-      }
+      _openOrderLink(navContext, container, uri.pathSegments.first);
     } else if (uri.host == 'store') {
-      final navContext = _navigatorKey.currentContext;
-      if (navContext == null) return;
-      final container = ProviderScope.containerOf(navContext, listen: false);
       _openStoreLink(navContext, container, uri.pathSegments.first);
     }
+  }
+
+  /// يفتح رابط طلبية بحسب دور المستخدم الحالي:
+  /// - التاجر: يفتح شاشة استلام الطلبية المعتادة لتجهيزها.
+  /// - الزبون (أو دور غير محدد بعد): هذا الرابط هو نفس الرابط الذي
+  ///   أرسله الزبون بنفسه إلى التاجر عبر واتساب، فلا معنى لفتح شاشة
+  ///   "استلام الطلب" الخاصة بالتاجر لديه (وقد تسبب خطأ لأن منتجات
+  ///   التاجر غير موجودة في قاعدة بيانات الزبون). نكتفي بتأكيد بسيط.
+  void _openOrderLink(BuildContext context, ProviderContainer container, String encoded) {
+    final OrderPayload payload;
+    try {
+      payload = OrderPayload.decode(encoded);
+    } catch (_) {
+      return; // رابط تالف أو غير صالح: نتجاهله بصمت.
+    }
+
+    final role = container.read(appRoleControllerProvider).valueOrNull;
+
+    if (role != AppRole.merchant) {
+      showDialog<void>(
+        context: context,
+        builder: (_) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 40),
+            title: const Text('تم إرسال الطلبية'),
+            content: Text('طلبيتك رقم #${payload.code} أُرسلت بالفعل إلى التاجر. يمكنك متابعتها من "طلبياتي".'),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('حسنًا'),
+              ),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+
+    _navigatorKey.currentState!.push(
+      MaterialPageRoute<void>(builder: (_) => OrderLinkScreen(payload: payload)),
+    );
   }
 
   Future<void> _openStoreLink(BuildContext context, ProviderContainer container, String code) async {
