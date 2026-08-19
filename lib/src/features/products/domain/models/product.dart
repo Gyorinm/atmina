@@ -11,6 +11,7 @@ class Product {
     required this.updatedAt,
     this.imagePath,
     this.familyId,
+    this.variantLabel,
   });
 
   final int? id;
@@ -31,6 +32,14 @@ class Product {
   /// أحجام ماء سيدي علي تنتمي لعائلة واحدة تحمل صورة واحدة).
   final int? familyId;
 
+  /// تسمية الحجم/الوزن الخاصة بهذا المتغيّر (مثال: "1 لتر"، "5 كغ").
+  /// منفصلة عن [name] حتى يبقى اسم المنتج نظيفًا (اسم العائلة فقط)
+  /// ويسهل تجميع المتغيّرات معًا في كتالوج الزبون.
+  final String? variantLabel;
+
+  /// الاسم الكامل المعروض (يدمج اسم المنتج مع تسمية الحجم إن وُجدت).
+  String get displayName => variantLabel == null || variantLabel!.isEmpty ? name : '$name - $variantLabel';
+
   Product copyWith({
     int? id,
     String? name,
@@ -45,6 +54,8 @@ class Product {
     bool clearImagePath = false,
     int? familyId,
     bool clearFamilyId = false,
+    String? variantLabel,
+    bool clearVariantLabel = false,
   }) {
     return Product(
       id: id ?? this.id,
@@ -58,6 +69,7 @@ class Product {
       updatedAt: updatedAt ?? this.updatedAt,
       imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
       familyId: clearFamilyId ? null : (familyId ?? this.familyId),
+      variantLabel: clearVariantLabel ? null : (variantLabel ?? this.variantLabel),
     );
   }
 
@@ -74,6 +86,7 @@ class Product {
       updatedAt: DateTime.parse(map['updated_at'] as String),
       imagePath: map['image_path'] as String?,
       familyId: (map['family_id'] as num?)?.toInt(),
+      variantLabel: map['variant_label'] as String?,
     );
   }
 
@@ -90,6 +103,7 @@ class Product {
       'updated_at': updatedAt.toIso8601String(),
       'image_path': imagePath,
       'family_id': familyId,
+      'variant_label': variantLabel,
     };
   }
 }
