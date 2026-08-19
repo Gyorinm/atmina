@@ -11,6 +11,7 @@ import '../../application/products_providers.dart';
 import '../../domain/models/create_product_input.dart';
 import '../../domain/models/product_family.dart';
 import 'preset_product_picker_sheet.dart';
+import 'variant_size_picker_sheet.dart';
 
 class AddProductDialog extends ConsumerStatefulWidget {
   const AddProductDialog({super.key, required this.existingCategories});
@@ -57,13 +58,51 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
   Future<void> _pickFromPresetList() async {
     final ProductFamily? picked = await PresetProductPickerSheet.show(context);
     if (picked == null) return;
+
+    // إذا كان المنتج قابلًا للقياس (سائل باللتر أو مادة بالكيلو)،
+    // نفتح مباشرة نافذة اختيار الأحجام المتوفرة بدل الحقل اليدوي.
+    if (picked.isMeasurable) {
+      await _openVariantSizePicker(picked);
+      return;
+    }
+
     setState(() {
       _selectedFamily = picked;
       _nameController.text = picked.name;
       _categoryController.text = picked.category;
-      // إن كان للمنتج صورة خاصة يدوية سابقة، نتركها كتجاوز اختياري
-      // لكن الأصل أن نعتمد صورة العائلة تلقائيًا.
     });
+  }
+
+  Future<void> _openVariantSizePicker(ProductFamily family) async {
+    final entries = await VariantSizePickerSheet.show(context, family);
+    if (entries == null || entries.isEmpty || !mounted) return;
+
+    setState(() => _isSaving = true);
+    try {
+      final inputs = entries
+          .map(
+            (entry) => CreateProductInput(
+              name: family.name,
+              category: family.category,
+              price: entry.price,
+              stockQuantity: entry.stockQuantity,
+              familyId: family.id,
+              variantLabel: '${entry.size} ${family.measurementUnit.unitLabel}',
+              // لا حاجة لصورة خاصة بكل حجم؛ الصورة تُستنتج تلقائيًا
+              // من العائلة عبر familyId في كل مكان بالتطبيق.
+            ),
+          )
+          .toList();
+
+      await ref.read(productsControllerProvider.notifier).addProductsBatch(inputs);
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   void _clearFamilySelection() {
@@ -323,7 +362,6 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
     setState(() => _isSaving = true);
     try {
       final variant = _variantController.text.trim();
-      final fullName = variant.isEmpty ? _nameController.text.trim() : '${_nameController.text.trim()} - $variant';
 
       // إذا كان مرتبطًا بعائلة تملك صورة، لا نحفظ صورة خاصة بالمنتج
       // (نعتمد على صورة العائلة تلقائيًا فتتوفر مساحة تخزين).
@@ -331,12 +369,13 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
 
       final product = await ref.read(productsControllerProvider.notifier).addProduct(
         CreateProductInput(
-          name: fullName,
+          name: _nameController.text.trim(),
           category: _categoryController.text.trim(),
           price: _parseDouble(_priceController.text.trim())!,
           stockQuantity: int.parse(_stockController.text.trim()),
           imagePath: imagePathToSave,
           familyId: _selectedFamily?.id,
+          variantLabel: variant.isEmpty ? null : variant,
         ),
       );
       if (mounted) Navigator.of(context).pop(product);
