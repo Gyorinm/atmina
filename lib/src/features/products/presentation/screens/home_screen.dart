@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/application/product_view_mode.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/view_mode_switcher.dart';
 import '../../../cart/application/cart_controller.dart';
 import '../../application/products_providers.dart';
 import '../../domain/models/product.dart';
@@ -44,11 +46,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final lowStock = ref.watch(lowStockProductsProvider).valueOrNull ?? const <Product>[];
     final cartTotals = ref.watch(cartTotalsProvider);
     final familiesById = ref.watch(productFamiliesByIdProvider);
+    final viewMode = ref.watch(merchantViewModeProvider).valueOrNull ?? ProductViewMode.comfortable;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Atmina POS'),
         actions: [
+          ViewModeSwitcher(
+            mode: viewMode,
+            onChanged: (mode) => ref.read(merchantViewModeProvider.notifier).setMode(mode),
+          ),
           IconButton(
             onPressed: () => _openAddProductDialog(categories),
             tooltip: 'إضافة منتج',
@@ -116,6 +123,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 data: (products) {
                   final groups = _groupProducts(products);
+                  Widget buildTile(int index) {
+                    final group = groups[index];
+                    // منتج له أكثر من حجم/متغيّر: بطاقة واحدة موحّدة
+                    // (بنفس شكل ظهورها للزبون) بدل تكرار المنتج عدة
+                    // مرات، مع بقاء صلاحيات تعديل الكمية والسعر والحذف.
+                    if (group.length > 1) {
+                      final familyId = group.first.familyId;
+                      final family = familyId != null ? familiesById[familyId] : null;
+                      return ProductGroupCard(
+                        products: group,
+                        family: family,
+                        mode: viewMode,
+                        onAdd: (product) => _addProduct(context, product),
+                        onUpdateStock: (product) => _updateStock(context, product),
+                        onDelete: (product) => _deleteProduct(context, product),
+                      );
+                    }
+                    final product = group.first;
+                    final family = product.familyId != null ? familiesById[product.familyId] : null;
+                    return ProductCard(
+                      product: product,
+                      familyImagePath: family?.imagePath,
+                      mode: viewMode,
+                      onAdd: () => _addProduct(context, product),
+                      onUpdateStock: () => _updateStock(context, product),
+                      onDelete: () => _deleteProduct(context, product),
+                    );
+                  }
+
                   return SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                     sliver: products.isEmpty
@@ -128,37 +164,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               },
                             ),
                           )
-                        : SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final group = groups[index];
-                                // منتج له أكثر من حجم/متغيّر: بطاقة واحدة موحّدة
-                                // (بنفس شكل ظهورها للزبون) بدل تكرار المنتج عدة
-                                // مرات، مع بقاء صلاحيات تعديل الكمية والسعر والحذف.
-                                if (group.length > 1) {
-                                  final familyId = group.first.familyId;
-                                  final family = familyId != null ? familiesById[familyId] : null;
-                                  return ProductGroupCard(
-                                    products: group,
-                                    family: family,
-                                    onAdd: (product) => _addProduct(context, product),
-                                    onUpdateStock: (product) => _updateStock(context, product),
-                                    onDelete: (product) => _deleteProduct(context, product),
-                                  );
-                                }
-                                final product = group.first;
-                                final family = product.familyId != null ? familiesById[product.familyId] : null;
-                                return ProductCard(
-                                  product: product,
-                                  familyImagePath: family?.imagePath,
-                                  onAdd: () => _addProduct(context, product),
-                                  onUpdateStock: () => _updateStock(context, product),
-                                  onDelete: () => _deleteProduct(context, product),
-                                );
-                              },
-                              childCount: groups.length,
-                            ),
-                          ),
+                        : viewMode == ProductViewMode.grid
+                            ? SliverGrid(
+                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  mainAxisSpacing: 12,
+                                  crossAxisSpacing: 12,
+                                  childAspectRatio: 0.72,
+                                ),
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) => buildTile(index),
+                                  childCount: groups.length,
+                                ),
+                              )
+                            : SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) => buildTile(index),
+                                  childCount: groups.length,
+                                ),
+                              ),
                   );
                 },
               ),
