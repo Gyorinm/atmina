@@ -1,3 +1,7 @@
+import '../../data/moroccan_grocery_presets.dart' show MeasurementUnit;
+
+export '../../data/moroccan_grocery_presets.dart' show MeasurementUnit;
+
 /// "عائلة منتج" تمثل منتجًا أساسيًا واحدًا (مثال: ماء سيدي علي) قد
 /// يُباع بعدة أحجام مختلفة (1 لتر، نصف لتر، صغير...). كل عائلة تحمل
 /// صورة واحدة فقط تُستخدم لكل الأحجام المنبثقة عنها تلقائيًا، فلا
@@ -9,6 +13,7 @@ class ProductFamily {
     required this.category,
     this.imagePath,
     this.imageExportedAt,
+    this.measurementUnit = MeasurementUnit.none,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -22,10 +27,16 @@ class ProductFamily {
   /// بعد، أو أن الصورة المحلية تغيّرت منذ آخر تصدير).
   final DateTime? imageExportedAt;
 
+  /// نوع القياس لهذا المنتج (بدون / لتر / كيلوغرام)، يحدد ما إذا كان
+  /// التاجر سيرى قائمة اختيار الأحجام المتوفرة عند إضافة منتج من
+  /// هذه العائلة.
+  final MeasurementUnit measurementUnit;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
   bool get isExportedToServer => imageExportedAt != null;
+  bool get isMeasurable => measurementUnit != MeasurementUnit.none;
 
   ProductFamily copyWith({
     int? id,
@@ -35,6 +46,7 @@ class ProductFamily {
     bool clearImagePath = false,
     DateTime? imageExportedAt,
     bool clearImageExportedAt = false,
+    MeasurementUnit? measurementUnit,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -44,6 +56,7 @@ class ProductFamily {
       category: category ?? this.category,
       imagePath: clearImagePath ? null : (imagePath ?? this.imagePath),
       imageExportedAt: clearImageExportedAt ? null : (imageExportedAt ?? this.imageExportedAt),
+      measurementUnit: measurementUnit ?? this.measurementUnit,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -57,6 +70,7 @@ class ProductFamily {
       category: map['category'] as String,
       imagePath: map['image_path'] as String?,
       imageExportedAt: exportedRaw == null ? null : DateTime.parse(exportedRaw),
+      measurementUnit: MeasurementUnit.fromStorage(map['measurement_unit'] as String?),
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );
@@ -69,6 +83,7 @@ class ProductFamily {
       'category': category,
       'image_path': imagePath,
       'image_exported_at': imageExportedAt?.toIso8601String(),
+      'measurement_unit': measurementUnit.storageValue,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
