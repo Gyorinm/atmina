@@ -49,9 +49,15 @@ class ProductFamiliesController extends AsyncNotifier<List<ProductFamily>> {
     required String name,
     required String category,
     String? imagePath,
+    MeasurementUnit measurementUnit = MeasurementUnit.none,
   }) async {
     final repository = ref.read(productFamiliesRepositoryProvider);
-    final family = await repository.addFamily(name: name, category: category, imagePath: imagePath);
+    final family = await repository.addFamily(
+      name: name,
+      category: category,
+      imagePath: imagePath,
+      measurementUnit: measurementUnit,
+    );
 
     final current = state.valueOrNull ?? await build();
     final updated = [...current, family]..sort((a, b) => a.name.compareTo(b.name));
@@ -178,6 +184,21 @@ class ProductsController extends AsyncNotifier<List<Product>> {
     unawaited(_autoPublish(updatedItems));
 
     return product;
+  }
+
+  /// يضيف عدة منتجات دفعة واحدة (مثال: عدة أحجام تم اختيارها معًا
+  /// من قائمة الأحجام المتوفرة)، ثم ينشر الكتالوج مرة واحدة فقط
+  /// بعد انتهاء كل الإضافات بدل نشره بعد كل منتج على حدة.
+  Future<List<Product>> addProductsBatch(List<CreateProductInput> inputs) async {
+    final repository = ref.read(productsRepositoryProvider);
+    final newProducts = await repository.addProductsBatch(inputs);
+
+    final currentItems = state.valueOrNull ?? await build();
+    final updatedItems = [...currentItems, ...newProducts]..sort((a, b) => a.name.compareTo(b.name));
+    state = AsyncData(updatedItems);
+    unawaited(_autoPublish(updatedItems));
+
+    return newProducts;
   }
 
   Future<Product> updateStock(Product product, int stockQuantity) async {
