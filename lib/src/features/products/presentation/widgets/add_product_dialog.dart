@@ -87,7 +87,7 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
               price: entry.price,
               stockQuantity: entry.stockQuantity,
               familyId: family.id,
-              variantLabel: '${entry.size} ${family.measurementUnit.unitLabel}',
+              variantLabel: '${entry.sizeLabel} ${family.measurementUnit.unitLabel}',
               // لا حاجة لصورة خاصة بكل حجم؛ الصورة تُستنتج تلقائيًا
               // من العائلة عبر familyId في كل مكان بالتطبيق.
             ),
@@ -211,11 +211,30 @@ class _AddProductDialogState extends ConsumerState<AddProductDialog> {
                   TextInputAction.next,
                   (_) => null,
                 ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Wrap(
+                    spacing: 8,
+                    children: ['صغير', 'متوسط', 'كبير'].map((label) {
+                      return ActionChip(
+                        label: Text(label),
+                        onPressed: () => setState(() => _variantController.text = label),
+                        backgroundColor: AppColors.canvas,
+                        labelStyle: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: const BorderSide(color: AppColors.border),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    'اكتب الحجم كما تريد بنفسك، لتمييز نفس المنتج بأحجام مختلفة. لا داعي لصورة جديدة لكل حجم.',
+                    'اضغط على كلمة جاهزة، أو اكتب الحجم كما تريد بنفسك.',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
                 ),
