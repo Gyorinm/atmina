@@ -29,6 +29,7 @@ class ProductFamiliesRepository {
           (preset) => ProductFamily(
             name: preset.name,
             category: preset.category,
+            measurementUnit: preset.measurementUnit,
             createdAt: now,
             updatedAt: now,
           ),
@@ -41,6 +42,7 @@ class ProductFamiliesRepository {
     required String name,
     required String category,
     String? imagePath,
+    MeasurementUnit measurementUnit = MeasurementUnit.none,
   }) {
     final now = DateTime.now();
     return _database.insertProductFamily(
@@ -48,6 +50,7 @@ class ProductFamiliesRepository {
         name: name.trim(),
         category: category.trim(),
         imagePath: imagePath,
+        measurementUnit: measurementUnit,
         createdAt: now,
         updatedAt: now,
       ),
