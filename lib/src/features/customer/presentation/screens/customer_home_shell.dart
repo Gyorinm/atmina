@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../store/presentation/screens/customer_orders_screen.dart';
+import '../../../store/presentation/screens/nearby_stores_map_screen.dart';
 import 'customer_home_screen.dart';
 import 'customer_more_screen.dart';
 
 /// الغلاف الرئيسي لواجهة الزبون، يضم شريط تنقل سفلي بالأيقونات
-/// (على غرار تطبيق فيسبوك) للتبديل بين الرئيسية، طلبياتي، والمزيد.
+/// (على غرار تطبيق فيسبوك) للتبديل بين الرئيسية، القريبة مني، طلبياتي،
+/// والمزيد.
 class CustomerHomeShell extends StatefulWidget {
   const CustomerHomeShell({super.key});
 
@@ -19,6 +21,7 @@ class _CustomerHomeShellState extends State<CustomerHomeShell> {
 
   static const List<Widget> _tabs = [
     CustomerHomeScreen(),
+    NearbyStoresMapScreen(),
     CustomerOrdersScreen(),
     CustomerMoreScreen(),
   ];
@@ -36,6 +39,7 @@ class _CustomerHomeShellState extends State<CustomerHomeShell> {
           indicatorColor: AppColors.navy.withValues(alpha: 0.1),
           destinations: const [
             NavigationDestination(icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront_rounded), label: 'الرئيسية'),
+            NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map_rounded), label: 'قريب مني'),
             NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long_rounded), label: 'طلبياتي'),
             NavigationDestination(icon: Icon(Icons.menu_rounded), selectedIcon: Icon(Icons.menu_open_rounded), label: 'المزيد'),
           ],
@@ -44,3 +48,4 @@ class _CustomerHomeShellState extends State<CustomerHomeShell> {
     );
   }
 }
+
