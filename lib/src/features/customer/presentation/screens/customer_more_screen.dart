@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/support_developer.dart';
 import '../../../onboarding/application/app_role_controller.dart';
+import '../../../store/presentation/screens/favorite_stores_screen.dart';
+import '../../../store/presentation/screens/product_search_screen.dart';
+import '../../../store/presentation/screens/shopping_list_screen.dart';
 
 /// تبويب "المزيد" في شريط الزبون السفلي.
 class CustomerMoreScreen extends ConsumerWidget {
@@ -17,6 +20,33 @@ class CustomerMoreScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            _MoreTile(
+              icon: Icons.favorite_rounded,
+              title: 'متاجري المفضلة',
+              subtitle: 'الوصول السريع للحوانيت التي تحبها',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const FavoriteStoresScreen()),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _MoreTile(
+              icon: Icons.checklist_rounded,
+              title: 'قائمة تسوقي',
+              subtitle: 'المنتجات التي تنوي شراءها',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const ShoppingListScreen()),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _MoreTile(
+              icon: Icons.search_rounded,
+              title: 'البحث الشامل عن منتج',
+              subtitle: 'ابحث عن منتج عبر كل المتاجر',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const ProductSearchScreen()),
+              ),
+            ),
+            const SizedBox(height: 12),
             _MoreTile(
               icon: Icons.favorite_border_rounded,
               title: 'دعم المطور',
