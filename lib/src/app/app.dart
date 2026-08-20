@@ -12,7 +12,6 @@ import '../features/onboarding/application/user_name_controller.dart';
 import '../features/onboarding/domain/app_role.dart';
 import '../features/onboarding/presentation/name_entry_screen.dart';
 import '../features/onboarding/presentation/role_selection_screen.dart';
-import '../features/orders/domain/order_payload.dart';
 import '../features/orders/presentation/order_link_screen.dart';
 import '../features/products/presentation/screens/merchant_home_shell.dart';
 import '../features/store/application/customer_session_controller.dart';
@@ -77,18 +76,13 @@ class _AtminaAppState extends State<AtminaApp> {
   }
 
   /// يفتح رابط طلبية بحسب دور المستخدم الحالي:
-  /// - التاجر: يفتح شاشة استلام الطلبية المعتادة لتجهيزها.
+  /// - التاجر: يفتح شاشة استلام الطلبية المعتادة لتجهيزها (تُحمَّل
+  ///   تفاصيلها من الخادم بواسطة رمزها القصير الموجود في الرابط).
   /// - الزبون (أو دور غير محدد بعد): هذا الرابط هو نفس الرابط الذي
   ///   أرسله الزبون بنفسه إلى التاجر عبر واتساب، فلا معنى لفتح شاشة
-  ///   "استلام الطلب" الخاصة بالتاجر لديه (وقد تسبب خطأ لأن منتجات
-  ///   التاجر غير موجودة في قاعدة بيانات الزبون). نكتفي بتأكيد بسيط.
-  void _openOrderLink(BuildContext context, ProviderContainer container, String encoded) {
-    final OrderPayload payload;
-    try {
-      payload = OrderPayload.decode(encoded);
-    } catch (_) {
-      return; // رابط تالف أو غير صالح: نتجاهله بصمت.
-    }
+  ///   "استلام الطلب" الخاصة بالتاجر لديه. نكتفي بتأكيد بسيط.
+  void _openOrderLink(BuildContext context, ProviderContainer container, String orderCode) {
+    if (orderCode.isEmpty) return;
 
     final role = container.read(appRoleControllerProvider).valueOrNull;
 
@@ -101,7 +95,7 @@ class _AtminaAppState extends State<AtminaApp> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 40),
             title: const Text('تم إرسال الطلبية'),
-            content: Text('طلبيتك رقم #${payload.code} أُرسلت بالفعل إلى التاجر. يمكنك متابعتها من "طلبياتي".'),
+            content: Text('طلبيتك رقم #$orderCode أُرسلت بالفعل إلى التاجر. يمكنك متابعتها من "طلبياتي".'),
             actions: [
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -115,7 +109,7 @@ class _AtminaAppState extends State<AtminaApp> {
     }
 
     _navigatorKey.currentState!.push(
-      MaterialPageRoute<void>(builder: (_) => OrderLinkScreen(payload: payload)),
+      MaterialPageRoute<void>(builder: (_) => OrderLinkScreen(orderCode: orderCode)),
     );
   }
 
