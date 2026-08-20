@@ -23,6 +23,7 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
   late final TextEditingController _whatsappController;
   bool _initialized = false;
   bool _publishing = false;
+  bool _reuploadingImages = false;
   DateTime? _lastPublishedAt;
 
   @override
@@ -202,6 +203,24 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ],
+                const SizedBox(height: 14),
+                OutlinedButton.icon(
+                  onPressed: _reuploadingImages ? null : () => _reuploadImages(profile),
+                  icon: _reuploadingImages
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.image_outlined),
+                  label: Text(_reuploadingImages ? 'جارٍ رفع الصور...' : 'إعادة رفع كل الصور إلى الخادم'),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'استخدم هذا الزر مرة واحدة فقط إذا لاحظت أن صور منتجاتك لا تظهر للزبناء (مثلاً بعد تغيير خادم النشر). قد تستغرق العملية بعض الوقت حسب عدد الصور.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'منتجاتك تُنشر تلقائيًا للزبناء عند كل إضافة أو تعديل — لا حاجة لأي إجراء يدوي. هذا الزر مفيد فقط لإعادة المزامنة يدويًا (مثلاً بعد تعديل اسم المتجر أو رقم واتساب، أو بعد انقطاع الإنترنت).',
@@ -214,6 +233,34 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _reuploadImages(StoreProfile profile) async {
+    setState(() => _reuploadingImages = true);
+    try {
+      final count = await ref.read(productFamiliesControllerProvider.notifier).reuploadAllImages(
+            storeCode: profile.storeCode,
+            secret: profile.secret,
+          );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              count > 0 ? 'تم رفع $count صورة بنجاح.' : 'لا توجد صور محلية لإعادة رفعها.',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر إعادة رفع الصور: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _reuploadingImages = false);
+    }
   }
 
   Future<void> _publish(StoreProfile profile) async {
