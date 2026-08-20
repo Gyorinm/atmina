@@ -102,6 +102,25 @@ class StoreApiService {
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList(growable: false);
   }
 
+  /// يبحث عن منتج بالاسم عبر كل المتاجر المنشورة على المنصة، ويعيد قائمة
+  /// نتائج (اسم المتجر، السعر، الإحداثيات إن وُجدت) لعرضها في شاشة
+  /// "البحث الشامل" عند الزبون.
+  Future<List<Map<String, dynamic>>> searchProducts(String query) async {
+    final uri = Uri.parse('$_baseUrl/search').replace(queryParameters: {'q': query});
+    late final http.Response response;
+    try {
+      response = await http.get(uri).timeout(const Duration(seconds: 15));
+    } catch (_) {
+      throw const StoreApiException('تعذر الاتصال بالخادم. تأكد من اتصالك بالإنترنت.');
+    }
+    if (response.statusCode != 200) {
+      throw StoreApiException('تعذر إجراء البحث (${response.statusCode}).');
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = decoded['results'] as List? ?? const [];
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList(growable: false);
+  }
+
   Future<Map<String, dynamic>> fetchCatalog(String storeCode) async {
     final uri = Uri.parse('$_baseUrl/store/$storeCode');
     late final http.Response response;
