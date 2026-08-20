@@ -4,7 +4,7 @@
 /// Pages الشخصية، حتى لا يظهر اسم حساب GitHub لأي زبون أو تاجر يفتح
 /// الرابط أو ينسخه.
 abstract final class ShareLinks {
-  static const String _baseUrl = 'https://atmina-store-api.o2730884.workers.dev/l';
+  static const String _baseUrl = 'https://atmina-svc.o2730884.workers.dev/l';
 
   static String storeLink(String storeCode) => '$_baseUrl#store/$storeCode';
 
