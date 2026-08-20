@@ -7,6 +7,7 @@ import '../../../../core/extensions/currency_formatting.dart';
 import '../../../../core/widgets/view_mode_switcher.dart';
 import '../../../cart/application/cart_controller.dart';
 import '../../../products/domain/models/product.dart';
+import '../../application/favorite_stores_controller.dart';
 import '../../domain/store_payload.dart';
 import 'customer_cart_screen.dart';
 
@@ -44,6 +45,8 @@ class CustomerCatalogScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final groups = _groupItems();
     final viewMode = ref.watch(customerViewModeProvider).valueOrNull ?? ProductViewMode.comfortable;
+    final favoritesAsync = ref.watch(favoriteStoresControllerProvider);
+    final isFavorite = favoritesAsync.valueOrNull?.any((s) => s.code == payload.storeCode) ?? false;
 
     void addToCart(StorePayloadItem item) {
       final added = ref.read(cartControllerProvider.notifier).addProduct(productFromCatalogItem(item));
@@ -76,6 +79,14 @@ class CustomerCatalogScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(payload.storeName.isEmpty ? 'متجر ${payload.storeCode}' : payload.storeName),
         actions: [
+          IconButton(
+            tooltip: isFavorite ? 'إزالة من المفضلة' : 'إضافة للمفضلة',
+            icon: Icon(
+              isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+              color: isFavorite ? Colors.redAccent : null,
+            ),
+            onPressed: () => ref.read(favoriteStoresControllerProvider.notifier).toggle(payload.storeCode, payload.storeName),
+          ),
           ViewModeSwitcher(
             mode: viewMode,
             onChanged: (mode) => ref.read(customerViewModeProvider.notifier).setMode(mode),
