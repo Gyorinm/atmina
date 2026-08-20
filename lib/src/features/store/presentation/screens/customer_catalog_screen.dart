@@ -603,7 +603,7 @@ class _FamilyThumbnail extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: Image.network(
-        'https://atmina-store-api.o2730884.workers.dev/store/$storeCode/images/$familyId',
+        'https://atmina-svc.o2730884.workers.dev/store/$storeCode/images/$familyId',
         width: size,
         height: size,
         fit: BoxFit.cover,
