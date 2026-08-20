@@ -5,6 +5,8 @@ class StorePayload {
     required this.whatsappNumber,
     required this.generatedAt,
     required this.items,
+    this.latitude,
+    this.longitude,
   });
 
   final String storeCode;
@@ -13,12 +15,19 @@ class StorePayload {
   final String generatedAt;
   final List<StorePayloadItem> items;
 
+  /// إحداثيات موقع المتجر (إن حدّدها التاجر)، تُستخدم لعرضه على خريطة
+  /// "المتاجر القريبة" عند الزبون.
+  final double? latitude;
+  final double? longitude;
+
   Map<String, dynamic> toMap() => {
         'store_code': storeCode,
         'store_name': storeName,
         'whatsapp_number': whatsappNumber,
         'generated_at': generatedAt,
         'items': items.map((e) => e.toMap()).toList(),
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
       };
 
   factory StorePayload.fromMap(Map<String, dynamic> map, {String? fallbackCode}) => StorePayload(
@@ -29,6 +38,8 @@ class StorePayload {
         items: (map['items'] as List? ?? const [])
             .map((e) => StorePayloadItem.fromMap(Map<String, dynamic>.from(e as Map)))
             .toList(growable: false),
+        latitude: (map['latitude'] as num?)?.toDouble(),
+        longitude: (map['longitude'] as num?)?.toDouble(),
       );
 }
 
