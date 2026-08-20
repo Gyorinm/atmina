@@ -148,6 +148,33 @@ class ProductFamiliesController extends AsyncNotifier<List<ProductFamily>> {
     if (family.id == null) return;
     await StoreApiService().deleteFamilyImage(storeCode: storeCode, secret: secret, familyId: family.id!);
   }
+
+  /// يعيد رفع كل الصور المحلية الموجودة لدى كل العائلات إلى الخادم،
+  /// بصرف النظر عن كونها مُعلَّمة مسبقًا كـ"مُصدَّرة" أم لا. مفيد بعد
+  /// تغيير خادم النشر (مثلاً عند الانتقال لخادم Cloudflare جديد)، حيث
+  /// تكون الصور القديمة موجودة على الجهاز لكن غير موجودة في قاعدة
+  /// بيانات الخادم الجديد. يُرجع عدد الصور التي رُفعت بنجاح.
+  Future<int> reuploadAllImages({
+    required String storeCode,
+    required String secret,
+  }) async {
+    final current = state.valueOrNull ?? await build();
+    var successCount = 0;
+
+    for (final family in current) {
+      if (family.id == null || family.imagePath == null) continue;
+      if (!File(family.imagePath!).existsSync()) continue;
+      try {
+        await uploadImageToServer(family: family, storeCode: storeCode, secret: secret);
+        successCount++;
+      } catch (_) {
+        // نتجاهل فشل صورة واحدة ونكمل الباقي، حتى لا يتوقف كل شيء
+        // بسبب صورة تالفة أو مشكلة مؤقتة في صورة معيّنة.
+      }
+    }
+
+    return successCount;
+  }
 }
 
 final productSearchQueryProvider = StateProvider<String>((ref) => '');
@@ -283,3 +310,4 @@ class ProductsController extends AsyncNotifier<List<Product>> {
     }
   }
 }
+
