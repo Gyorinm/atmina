@@ -11,7 +11,7 @@ class StoreApiException implements Exception {
 }
 
 class StoreApiService {
-  static const String _baseUrl = 'https://atmina-store-api.o2730884.workers.dev';
+  static const String _baseUrl = 'https://atmina-svc.o2730884.workers.dev';
 
   Future<void> publishCatalog({
     required String storeCode,
