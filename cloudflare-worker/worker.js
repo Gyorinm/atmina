@@ -32,6 +32,14 @@ export default {
       return handleStoresListRequest(env, cors);
     }
 
+    // ===== البحث الشامل عن منتج عبر كل المتاجر =====
+    // يستخدمه الزبون لمعرفة أي حانوت يوفر منتجًا معيّنًا، دون الحاجة
+    // لتصفح كل متجر على حدة.
+    if (url.pathname === '/search' && request.method === 'GET') {
+      const q = (url.searchParams.get('q') || '').trim();
+      return handleProductSearchRequest(env, cors, q);
+    }
+
     if (parts[0] !== 'store' || !parts[1]) {
       return new Response(JSON.stringify({ error: 'not_found' }), {
         status: 404,
@@ -132,6 +140,57 @@ async function handleStoresListRequest(env, cors) {
   } while (!page.list_complete && cursor);
 
   return new Response(JSON.stringify({ stores }), {
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  });
+}
+
+/// يبحث عن كلمة q ضمن أسماء المنتجات في كل المتاجر المنشورة، ويعيد قائمة
+/// بأول 40 نتيجة مطابقة مع بيانات الحانوت المختصرة (الاسم والإحداثيات)
+/// حتى يمكن للزبون معرفة أي حانوت يوفر المنتج وترتيبه حسب القرب.
+async function handleProductSearchRequest(env, cors, query) {
+  if (!query || query.length < 2) {
+    return new Response(JSON.stringify({ results: [] }), {
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
+  const needle = query.toLocaleLowerCase();
+  const results = [];
+  let cursor;
+  let page;
+  do {
+    page = await env.STORES.list({ cursor });
+    cursor = page.cursor;
+    for (const key of page.keys) {
+      if (key.name.startsWith('img:')) continue;
+      if (results.length >= 40) break;
+      try {
+        const raw = await env.STORES.get(key.name);
+        if (!raw) continue;
+        const data = JSON.parse(raw);
+        const items = Array.isArray(data.items) ? data.items : [];
+        for (const item of items) {
+          if (results.length >= 40) break;
+          const name = (item.name || '').toLocaleLowerCase();
+          if (name.includes(needle)) {
+            results.push({
+              store_code: data.store_code || key.name,
+              store_name: data.store_name || '',
+              latitude: typeof data.latitude === 'number' ? data.latitude : null,
+              longitude: typeof data.longitude === 'number' ? data.longitude : null,
+              item_name: item.name,
+              price: item.price,
+              stock_quantity: item.stock_quantity,
+              category: item.category,
+            });
+          }
+        }
+      } catch (e) {
+        // نتجاهل أي إدخال تالف بدل فشل الطلب بالكامل
+      }
+    }
+  } while (!page.list_complete && cursor && results.length < 40);
+
+  return new Response(JSON.stringify({ results }), {
     headers: { ...cors, 'Content-Type': 'application/json' },
   });
 }
