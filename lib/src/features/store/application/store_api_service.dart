@@ -83,6 +83,25 @@ class StoreApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  /// يجلب قائمة مختصرة بكل المتاجر التي حدّدت موقعها الجغرافي، لعرضها
+  /// على خريطة "المتاجر القريبة" عند الزبون. كل عنصر يحتوي على
+  /// store_code و store_name و latitude و longitude فقط.
+  Future<List<Map<String, dynamic>>> fetchAllStores() async {
+    final uri = Uri.parse('$_baseUrl/stores');
+    late final http.Response response;
+    try {
+      response = await http.get(uri).timeout(const Duration(seconds: 15));
+    } catch (_) {
+      throw const StoreApiException('تعذر الاتصال بالخادم. تأكد من اتصالك بالإنترنت.');
+    }
+    if (response.statusCode != 200) {
+      throw StoreApiException('تعذر تحميل قائمة المتاجر (${response.statusCode}).');
+    }
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = decoded['stores'] as List? ?? const [];
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList(growable: false);
+  }
+
   Future<Map<String, dynamic>> fetchCatalog(String storeCode) async {
     final uri = Uri.parse('$_baseUrl/store/$storeCode');
     late final http.Response response;
