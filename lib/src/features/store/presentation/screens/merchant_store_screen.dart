@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -24,6 +25,7 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
   bool _initialized = false;
   bool _publishing = false;
   bool _reuploadingImages = false;
+  bool _locating = false;
   DateTime? _lastPublishedAt;
 
   @override
@@ -184,6 +186,50 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined, color: AppColors.navy),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              profile.hasLocation
+                                  ? 'تم تحديد موقع متجرك — يظهر الآن للزبناء في خريطة المتاجر القريبة.'
+                                  : 'حدّد موقع متجرك ليظهر للزبناء القريبين منك على الخريطة.',
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: _locating ? null : () => _pickLocation(profile),
+                        icon: _locating
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(profile.hasLocation ? Icons.my_location_rounded : Icons.location_searching_rounded),
+                        label: Text(
+                          _locating
+                              ? 'جارٍ تحديد الموقع...'
+                              : (profile.hasLocation ? 'تحديث موقع المتجر الحالي' : 'تحديد موقع المتجر الآن'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
                 FilledButton.icon(
                   onPressed: _publishing ? null : () => _publish(profile),
                   icon: _publishing
@@ -235,6 +281,57 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
     );
   }
 
+  Future<void> _pickLocation(StoreProfile profile) async {
+    setState(() => _locating = true);
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('يجب السماح بالوصول للموقع لتحديد مكان متجرك.')),
+          );
+        }
+        return;
+      }
+
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('يرجى تفعيل خدمة الموقع (GPS) في هاتفك.')),
+          );
+        }
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+
+      await ref.read(storeProfileControllerProvider.notifier).updateLocation(
+            latitude: position.latitude,
+            longitude: position.longitude,
+          );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تحديد موقع المتجر. اضغط "إعادة مزامنة يدوية" لنشره.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تحديد الموقع: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
   Future<void> _reuploadImages(StoreProfile profile) async {
     setState(() => _reuploadingImages = true);
     try {
@@ -280,6 +377,8 @@ class _MerchantStoreScreenState extends ConsumerState<MerchantStoreScreen> {
         storeName: name,
         whatsappNumber: whatsapp,
         products: products,
+        latitude: profile.latitude,
+        longitude: profile.longitude,
       );
 
       await StoreApiService().publishCatalog(
