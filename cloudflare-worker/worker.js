@@ -24,6 +24,14 @@ export default {
       });
     }
 
+    // ===== قائمة كل المتاجر التي حدّدت موقعها الجغرافي =====
+    // تُستخدم من شاشة "المتاجر القريبة" عند الزبون لعرض كل المتاجر على
+    // خريطة واحدة. لا تُرجع أي بيانات حساسة (لا سر، ولا قائمة منتجات
+    // كاملة) بل فقط الحد الأدنى اللازم لرسم علامة على الخريطة.
+    if (url.pathname === '/stores' && request.method === 'GET') {
+      return handleStoresListRequest(env, cors);
+    }
+
     if (parts[0] !== 'store' || !parts[1]) {
       return new Response(JSON.stringify({ error: 'not_found' }), {
         status: 404,
@@ -92,6 +100,41 @@ export default {
     });
   },
 };
+
+/// يجمع قائمة مختصرة (الاسم + الإحداثيات + الرمز) لكل متجر سبق أن حدّد
+/// موقعه الجغرافي، لعرضها دفعة واحدة على خريطة الزبون. نتجاهل مفاتيح
+/// الصور (img:...) ونتجاهل أي متجر لم يسجّل إحداثيات بعد.
+async function handleStoresListRequest(env, cors) {
+  const stores = [];
+  let cursor;
+  let page;
+  do {
+    page = await env.STORES.list({ cursor });
+    cursor = page.cursor;
+    for (const key of page.keys) {
+      if (key.name.startsWith('img:')) continue;
+      try {
+        const raw = await env.STORES.get(key.name);
+        if (!raw) continue;
+        const data = JSON.parse(raw);
+        if (typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+          stores.push({
+            store_code: data.store_code || key.name,
+            store_name: data.store_name || '',
+            latitude: data.latitude,
+            longitude: data.longitude,
+          });
+        }
+      } catch (e) {
+        // نتجاهل أي إدخال تالف بدل فشل الطلب بالكامل
+      }
+    }
+  } while (!page.list_complete && cursor);
+
+  return new Response(JSON.stringify({ stores }), {
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  });
+}
 
 /// يتحقق من أن السر المُرسل يطابق سر المتجر المسجّل، بنفس منطق
 /// التحقق المستخدم أصلًا في PUT /store/{code}.
