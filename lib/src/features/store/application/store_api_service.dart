@@ -39,6 +39,50 @@ class StoreApiService {
     }
   }
 
+  /// ينشر بيانات طلبية كاملة على الخادم تحت رمزها القصير، بحيث يصبح
+  /// الرابط المُرسل للتاجر يحمل هذا الرمز فقط بدل تضمين كل تفاصيل
+  /// الطلبية (الأصناف والكميات والأسعار) مضغوطة داخل الرابط نفسه، مما
+  /// يقصّر الرابط بشكل كبير.
+  Future<void> publishOrder({
+    required String code,
+    required Map<String, dynamic> body,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/order/$code');
+    late final http.Response response;
+    try {
+      response = await http
+          .put(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+    } catch (_) {
+      throw const StoreApiException('تعذر الاتصال بالخادم. تأكد من اتصالك بالإنترنت.');
+    }
+    if (response.statusCode != 200) {
+      throw StoreApiException('تعذر إرسال الطلبية إلى الخادم (${response.statusCode}).');
+    }
+  }
+
+  /// يجلب بيانات طلبية سبق نشرها بواسطة رمزها القصير (الموجود في الرابط).
+  Future<Map<String, dynamic>> fetchOrder(String code) async {
+    final uri = Uri.parse('$_baseUrl/order/$code');
+    late final http.Response response;
+    try {
+      response = await http.get(uri).timeout(const Duration(seconds: 15));
+    } catch (_) {
+      throw const StoreApiException('تعذر الاتصال بالخادم. تأكد من اتصالك بالإنترنت.');
+    }
+    if (response.statusCode == 404) {
+      throw const StoreApiException('لم يتم العثور على هذه الطلبية. قد تكون منتهية الصلاحية.');
+    }
+    if (response.statusCode != 200) {
+      throw StoreApiException('تعذر تحميل بيانات الطلبية (${response.statusCode}).');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> fetchCatalog(String storeCode) async {
     final uri = Uri.parse('$_baseUrl/store/$storeCode');
     late final http.Response response;
