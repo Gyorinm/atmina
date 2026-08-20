@@ -25,12 +25,16 @@ class StoreService {
     required String storeName,
     required String whatsappNumber,
     required List<Product> products,
+    double? latitude,
+    double? longitude,
   }) {
     return StorePayload(
       storeCode: storeCode,
       storeName: storeName,
       whatsappNumber: whatsappNumber,
       generatedAt: DateTime.now().toIso8601String(),
+      latitude: latitude,
+      longitude: longitude,
       items: products
           .map((p) => StorePayloadItem(
                 internalCode: p.barcode,
