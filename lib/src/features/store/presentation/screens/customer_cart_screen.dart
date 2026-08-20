@@ -12,6 +12,7 @@ import '../../../onboarding/application/user_name_controller.dart';
 import '../../../orders/application/order_service.dart';
 import '../../../products/data/datasources/app_database.dart';
 import '../../application/customer_orders_controller.dart';
+import '../../application/store_api_service.dart';
 import '../../domain/customer_order_record.dart';
 import '../../domain/store_payload.dart';
 
@@ -119,7 +120,10 @@ class _CustomerCartScreenState extends ConsumerState<CustomerCartScreen> {
         note: 'طلبية من متجر ${widget.payload.storeCode}',
         customerName: customerName,
       );
-      final link = ShareLinks.orderLink(orderPayload.encode());
+      // ننشر بيانات الطلبية الكاملة على الخادم أولاً، ليحمل الرابط
+      // المُرسل للتاجر رمزها القصير فقط بدل كل تفاصيلها.
+      await StoreApiService().publishOrder(code: orderPayload.code, body: orderPayload.toMap());
+      final link = ShareLinks.orderLink(orderPayload.code);
       final customerLine = customerName.isEmpty ? '' : 'الزبون: $customerName\n';
       final message = 'طلبية جديدة #${orderPayload.code} من متجرك على Atmina\n'
           '$customerLine'
