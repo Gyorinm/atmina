@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'product_view_mode.dart';
+import '../application/product_view_mode.dart';
 
 /// زر في الشريط العلوي يتيح للمستخدم (تاجر أو زبون) اختيار طريقة عرض
 /// المنتجات بحرية كاملة من بين كل الطرق المتاحة.
