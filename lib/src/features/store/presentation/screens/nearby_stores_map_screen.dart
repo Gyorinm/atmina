@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../application/favorite_stores_controller.dart';
 import '../../application/store_api_service.dart';
 import '../../application/store_opener.dart';
 
@@ -199,9 +200,30 @@ class _NearbyStoresMapScreenState extends ConsumerState<NearbyStoresMapScreen> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                 leading: const Icon(Icons.storefront_rounded, color: AppColors.navy),
                                 title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                trailing: distanceLabel != null
-                                    ? Text(distanceLabel, style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted))
-                                    : const Icon(Icons.chevron_left_rounded, color: AppColors.textMuted),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (distanceLabel != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 4),
+                                        child: Text(distanceLabel, style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
+                                      ),
+                                    Consumer(
+                                      builder: (context, ref, _) {
+                                        final favorites = ref.watch(favoriteStoresControllerProvider).valueOrNull ?? const [];
+                                        final isFavorite = favorites.any((s) => s.code == code);
+                                        return IconButton(
+                                          visualDensity: VisualDensity.compact,
+                                          icon: Icon(
+                                            isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                            color: isFavorite ? Colors.redAccent : AppColors.textMuted,
+                                          ),
+                                          onPressed: () => ref.read(favoriteStoresControllerProvider.notifier).toggle(code, displayName),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
                                 onTap: () => _openStore(code, name),
                               ),
                             );
